@@ -133,9 +133,43 @@ extension WindowManager: NSWindowDelegate {
             return
         }
         
-        // Hide window when it loses focus (user clicks outside)
+        // Don't hide if any sheets/modals are attached to our window
+        if let window = window, window.sheets.count > 0 {
+            return
+        }
+        
+        // Don't hide if the key window is a sheet attached to our window
+        if let keyWindow = NSApp.keyWindow, keyWindow != window {
+            // Check if it's a sheet attached to our window
+            if keyWindow.isSheet, keyWindow.parent == window {
+                return
+            }
+        }
+        
+        // Only hide if window is still visible and we're actually clicking outside
+        // Add a small delay to distinguish between sheet appearance and actual click-outside
         if isVisible {
-            hideWindow(animated: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self = self else { return }
+                
+                // Re-check conditions after delay
+                if AppSettings.shared.showSettings {
+                    return
+                }
+                
+                if let window = self.window, window.sheets.count > 0 {
+                    return
+                }
+                
+                // Only hide if we're still not the key window and no sheets are showing
+                if self.isVisible && NSApp.keyWindow != self.window {
+                    // Final check: if key window is our window's child (sheet), don't hide
+                    if let keyWindow = NSApp.keyWindow, keyWindow.parent == self.window {
+                        return
+                    }
+                    self.hideWindow(animated: true)
+                }
+            }
         }
     }
 }

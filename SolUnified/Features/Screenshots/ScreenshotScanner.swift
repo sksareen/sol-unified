@@ -52,7 +52,7 @@ class ScreenshotScanner: ObservableObject {
             throw NSError(domain: "Failed to read directory", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to read directory: \(directoryURL.path)"])
         }
         
-        let imageExtensions: Set<String> = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"]
+        let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "bmp"]
         let imageFiles = files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
         
         print("📸 Found \(imageFiles.count) image files")

@@ -33,18 +33,21 @@ class TimerStore: ObservableObject {
             totalDuration = selectedDuration
         }
         
-        isRunning = true
-        
         // Create timer that persists across view lifecycle
         // Ensure timer runs on main thread to keep it active when app is hidden
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            
+            // Create timer - scheduledTimer automatically adds to RunLoop.default
             self.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
                 self?.tick()
             }
             
             // Add timer to common run loop modes to keep it running when app is hidden
             RunLoop.main.add(self.timer!, forMode: .common)
+            
+            // Set isRunning after timer is successfully created
+            self.isRunning = true
         }
     }
     
