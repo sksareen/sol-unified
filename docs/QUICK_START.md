@@ -1,6 +1,6 @@
 # Quick Start Guide - Sol Unified
 
-## Get Running in 2 Minutes
+Get Sol Unified running in 2 minutes!
 
 ### Step 1: Set OpenAI API Key (Optional - for AI screenshot analysis)
 
@@ -19,13 +19,13 @@ source ~/.zshrc
 ### Step 2: Run the App
 
 ```bash
-cd /Users/savarsareen/coding/mable/sol-unified
+cd sol-unified
 ./run.sh
 ```
 
 Or directly:
 ```bash
-cd /Users/savarsareen/coding/mable/sol-unified
+cd sol-unified
 swift run
 ```
 
@@ -91,7 +91,7 @@ You now have:
 
 ### Build errors?
 ```bash
-cd /Users/savarsareen/coding/mable/sol-unified
+cd sol-unified
 swift build
 ```
 

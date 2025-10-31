@@ -4,7 +4,7 @@
     "description": "Native macOS app combining notes, clipboard manager, and AI-powered screenshot organizer with global hotkey access",
     "version": "1.0.0",
     "target_platform": "macOS 13.0+",
-    "project_path": "/Users/savarsareen/coding/mable/sol-unified",
+    "project_path": "sol-unified",
     "language": "Swift 5.9+",
     "frameworks": ["SwiftUI", "AppKit", "Carbon", "SQLite3"],
     "design_philosophy": "Brutalist - minimal, functional, high-contrast, clean typography"

@@ -72,9 +72,9 @@ echo "⚙️  Checking configuration files..."
 CONFIG_FILES=(
     "Info.plist"
     "SolUnified.entitlements"
+    "Package.swift"
     "README.md"
-    "BUILD_INSTRUCTIONS.md"
-    "sol-unified-spec.json"
+    "run.sh"
 )
 
 for file in "${CONFIG_FILES[@]}"; do
@@ -88,26 +88,13 @@ done
 
 echo ""
 
-# Check Python backend
-echo "🐍 Checking Python backend..."
-BACKEND_PATH="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian Vault/brutalist-apps-ecosystem/screenshot-organizer/backend"
-if [ -d "$BACKEND_PATH" ]; then
-    echo "  ✓ Backend directory exists"
-    if [ -f "$BACKEND_PATH/main.py" ]; then
-        echo "  ✓ main.py found"
-    else
-        echo "  ⚠ main.py not found"
-        ((WARNINGS++))
-    fi
-    if [ -f "$BACKEND_PATH/requirements.txt" ]; then
-        echo "  ✓ requirements.txt found"
-    else
-        echo "  ⚠ requirements.txt not found"
-        ((WARNINGS++))
-    fi
+# Check ScreenshotScanner (new native implementation)
+echo "📸 Checking screenshot scanner..."
+if [ -f "SolUnified/Features/Screenshots/ScreenshotScanner.swift" ]; then
+    echo "  ✓ ScreenshotScanner.swift (native implementation)"
 else
-    echo "  ⚠ Backend directory not found (screenshots won't work)"
-    ((WARNINGS++))
+    echo "  ✗ ScreenshotScanner.swift (MISSING)"
+    ((ERRORS++))
 fi
 
 echo ""
@@ -115,7 +102,8 @@ echo ""
 # Check environment
 echo "🔑 Checking environment..."
 if [ -z "$OPENAI_API_KEY" ]; then
-    echo "  ⚠ OPENAI_API_KEY not set (screenshot analysis won't work)"
+    echo "  ⚠ OPENAI_API_KEY not set (AI screenshot analysis won't work)"
+    echo "     Screenshots will still work without AI analysis"
     ((WARNINGS++))
 else
     echo "  ✓ OPENAI_API_KEY is set"
@@ -140,9 +128,9 @@ if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo "Your project structure is complete."
     echo ""
     echo "Next steps:"
-    echo "1. Open Xcode and create new project in this directory"
-    echo "2. Follow BUILD_INSTRUCTIONS.md"
-    echo "3. Build and run!"
+    echo "1. Run: ./run.sh"
+    echo "2. Grant Accessibility permission when prompted"
+    echo "3. Press Option + ` to show/hide the window"
 elif [ $ERRORS -eq 0 ]; then
     echo "⚠️  CHECKS PASSED WITH WARNINGS"
     echo "Warnings: $WARNINGS"

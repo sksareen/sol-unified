@@ -27,15 +27,13 @@ DerivedData/
 *.dSYM
 *.product
 
-# Python (for screenshot backend)
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
+# Screenshot organizer backend (legacy - now native Swift)
+screenshot-organizer/backend/venv/
+screenshot-organizer/backend/__pycache__/
+screenshot-organizer/backend/*.db
+screenshot-organizer/backend/*.log
+screenshot-organizer/backend/*.pyc
+screenshot-organizer/backend/.env
 
 # Database
 *.db

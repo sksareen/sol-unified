@@ -22,6 +22,8 @@ A native macOS app combining notes, clipboard manager, and screenshot organizer 
 - Statistics dashboard
 - Optional AI-powered analysis (requires OpenAI API key)
 
+**Note**: Screenshots work without an API key - you just won't get AI-generated descriptions and tags.
+
 ## Quick Start
 
 ### Prerequisites
@@ -201,14 +203,19 @@ Or:
 swift run
 ```
 
-### Release Build
-```bash
-swift run -c release
-```
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Credits
 

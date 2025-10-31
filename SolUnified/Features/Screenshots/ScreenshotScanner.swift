@@ -41,8 +41,6 @@ class ScreenshotScanner: ObservableObject {
         print("📁 Scanning directory: \(directoryURL.path)")
         
         let fileManager = FileManager.default
-        
-        // Check if directory exists
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: directoryURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
             print("❌ Directory does not exist: \(directoryURL.path)")
