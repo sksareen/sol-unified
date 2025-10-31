@@ -2,6 +2,8 @@
 
 A native macOS app combining notes, clipboard manager, and screenshot organizer with global hotkey access.
 
+![Demo](demo.gif)
+
 ## Features
 
 ### 📝 Notes
