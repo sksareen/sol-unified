@@ -41,17 +41,17 @@ A native macOS app combining notes, clipboard manager, and screenshot organizer 
 
 ### October 2025
 
-**Oct 17 - Markdown Support**: Scratchpad now includes markdown formatting with edit/preview mode toggle. Write in markdown syntax and preview rendered output with proper headings, bold, italic, code blocks, links, and more.
+**Oct 31 - Markdown Support**: Scratchpad now includes markdown formatting with edit/preview mode toggle. Write in markdown syntax and preview rendered output with proper headings, bold, italic, code blocks, links, and more.
 
-**Oct 17 - Image Thumbnails in Clipboard**: Clipboard history now displays actual 60x60px thumbnails of copied images instead of just icons, making it easier to visually identify and find specific images.
+**Oct 31 - Image Thumbnails in Clipboard**: Clipboard history now displays actual 60x60px thumbnails of copied images instead of just icons, making it easier to visually identify and find specific images.
 
-**Oct 17 - Dark Mode**: Added system-wide dark mode toggle in Settings (Cmd+,) with instant UI updates. Choose between light and dark themes with carefully designed color palettes for both modes.
+**Oct 31 - Dark Mode**: Added system-wide dark mode toggle in Settings (Cmd+,) with instant UI updates. Choose between light and dark themes with carefully designed color palettes for both modes.
 
-**Oct 17 - Screenshot Web App Integration**: Screenshots tab now embeds the full-featured web app via WebView, providing instant access to table view, favorites, advanced search, batch operations, and all web app features without rebuilding native UI.
+**Oct 31 - Screenshot Web App Integration**: Screenshots tab now embeds the full-featured web app via WebView, providing instant access to table view, favorites, advanced search, batch operations, and all web app features without rebuilding native UI.
 
-**Oct 17 - Tab Cycling**: Added Tab key support to cycle through tabs (Notes → Clipboard → Screenshots → Notes) for faster keyboard-only navigation.
+**Oct 31 - Tab Cycling**: Added Tab key support to cycle through tabs (Notes → Clipboard → Screenshots → Notes) for faster keyboard-only navigation.
 
-**Oct 17 - Customizable Window Size**: Settings now include width and height sliders (600-1400px width, 400-1000px height) to customize the app window to your preferred dimensions.
+**Oct 31 - Customizable Window Size**: Settings now include width and height sliders (600-1400px width, 400-1000px height) to customize the app window to your preferred dimensions.
 
 ---
 
