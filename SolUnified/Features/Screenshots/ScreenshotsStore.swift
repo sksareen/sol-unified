@@ -35,11 +35,19 @@ class ScreenshotsStore: ObservableObject {
         parameters.append(limit)
         parameters.append(offset)
         
-        print("🔍 Loading screenshots: \(sql) with \(parameters.count) params")
+        print("🔍 Loading screenshots: \(sql)")
+        print("   Parameters: \(parameters)")
+        
         let results = db.query(sql, parameters: parameters)
         print("📸 Loaded \(results.count) screenshots from database")
+        
         screenshots = results.map { screenshotFromRow($0) }
         print("✅ Converted to \(screenshots.count) Screenshot objects")
+        
+        // Debug: Print first screenshot if available
+        if let first = screenshots.first {
+            print("   First screenshot: \(first.filename) at \(first.filepath)")
+        }
     }
     
     func getScreenshot(id: Int) -> Screenshot? {

@@ -34,12 +34,9 @@ class ScreenshotScanner: ObservableObject {
             }
         }
         
-        let directoryURL: URL
-        if let url = URL(string: directoryPath), url.scheme != nil {
-            directoryURL = url
-        } else {
-            directoryURL = URL(fileURLWithPath: directoryPath)
-        }
+        // Expand tilde and resolve path
+        let expandedPath = (directoryPath as NSString).expandingTildeInPath
+        let directoryURL = URL(fileURLWithPath: expandedPath)
         
         print("📁 Scanning directory: \(directoryURL.path)")
         
@@ -61,6 +58,10 @@ class ScreenshotScanner: ObservableObject {
         let imageFiles = files.filter { imageExtensions.contains($0.pathExtension.lowercased()) }
         
         print("📸 Found \(imageFiles.count) image files")
+        
+        if imageFiles.isEmpty {
+            print("⚠️ No image files found in directory")
+        }
         
         var stats = ScanResult(totalFiles: imageFiles.count, newFiles: 0, existingFiles: 0, errors: 0)
         
@@ -93,8 +94,16 @@ class ScreenshotScanner: ObservableObject {
                 
                 // Insert into database (without AI analysis for now)
                 let filename = fileURL.lastPathComponent
+                
+                // Check for duplicate filename first (INSERT OR IGNORE won't work if hash exists but filename different)
+                let existing = db.query("SELECT id FROM screenshots WHERE file_hash = ? OR filename = ?", parameters: [fileHash, filename])
+                if !existing.isEmpty {
+                    stats.existingFiles += 1
+                    continue
+                }
+                
                 let success = db.execute("""
-                    INSERT OR IGNORE INTO screenshots 
+                    INSERT INTO screenshots 
                     (filename, filepath, file_hash, file_size, created_at, modified_at, width, height)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, parameters: [
@@ -110,7 +119,7 @@ class ScreenshotScanner: ObservableObject {
                 
                 if success {
                     stats.newFiles += 1
-                    print("✅ Added: \(filename)")
+                    print("✅ Added: \(filename) (\(fileSize) bytes)")
                 } else {
                     stats.errors += 1
                     print("⚠️ Failed to insert: \(filename)")

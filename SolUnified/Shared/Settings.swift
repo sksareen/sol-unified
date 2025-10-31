@@ -34,7 +34,10 @@ class AppSettings: ObservableObject {
         self.windowWidth = UserDefaults.standard.object(forKey: "windowWidth") as? CGFloat ?? 800
         self.windowHeight = UserDefaults.standard.object(forKey: "windowHeight") as? CGFloat ?? 600
         self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? false
-        self.screenshotsDirectory = UserDefaults.standard.string(forKey: "screenshotsDirectory") ?? (NSHomeDirectory() + "/Pictures/Pics/Screenshots")
+        
+        // Default screenshots directory - expand tilde
+        let defaultDir = (NSHomeDirectory() + "/Pictures/Pics/Screenshots")
+        self.screenshotsDirectory = UserDefaults.standard.string(forKey: "screenshotsDirectory") ?? defaultDir
     }
     
     func resetToDefaults() {
