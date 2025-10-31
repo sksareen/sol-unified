@@ -1,0 +1,63 @@
+# Swift/SwiftPM
+.build/
+.swiftpm/
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+*.xcuserstate
+*.xcuserdatad
+*.xcscmblueprint
+*.xccheckout
+
+# Build artifacts
+*.o
+*.a
+*.dylib
+*.dSYM
+*.product
+
+# Python (for screenshot backend)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+backend.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
