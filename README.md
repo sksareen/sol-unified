@@ -215,6 +215,38 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Roadmap
+
+### ✅ Phase 1: Core Content Capture (Current)
+- **Mac app** consolidating clipboard, screenshots, and quick notes
+- Global hotkey access for instant capture
+- Native file scanning and organization
+- Basic search and filtering
+
+### 🔄 Phase 2: Intelligent Analysis & Tagging
+- Enhanced screenshot analysis with AI-powered descriptions
+- Automatic tagging and categorization
+- Content extraction from images (OCR)
+- Search across all captured content (text, images, notes)
+
+### 🚀 Phase 3: Universal Content Capture
+- Expand beyond screenshots and clipboard to capture:
+  - Web content (articles, code snippets)
+  - Documents and PDFs
+  - Audio/video transcripts
+  - Browser history and bookmarks
+- Unified search across all content types
+- Smart content relationships and linking
+
+### 🎯 Phase 4: Personal AI Training
+- Aggregate all captured content into a knowledge base
+- Provide context-aware suggestions and insights
+- Enable users to train custom models on their own data
+- Private, local-first AI training capabilities
+- Export structured data for model fine-tuning
+
+---
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
