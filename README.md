@@ -8,23 +8,52 @@ A native macOS app combining notes, clipboard manager, and screenshot organizer 
 
 ### 📝 Notes
 - **Scratchpad**: Quick global note, auto-saves as you type
-- Persistent notes with markdown support
+- Markdown support with edit/preview toggle
+- Monospaced font for editing, rendered view for preview
+- Supports headings, bold, italic, code, links, lists, quotes, strikethrough
 
 ### 📋 Clipboard Manager
 - Automatically captures clipboard history (last 100 items)
 - Supports text, images, and files
+- Image thumbnails in history for visual identification
 - Search through history
 - Click to copy back to clipboard
 - Deduplication using content hashing
 
 ### 📸 Screenshot Organizer
-- Native file scanning directly from your folder
-- Beautiful grid view with thumbnails
-- Search by filename
-- Statistics dashboard
-- Optional AI-powered analysis (requires OpenAI API key)
+- Full-featured web app embedded via WebView
+- Table and grid view options
+- Favorites system and advanced search
+- AI-powered analysis (requires OpenAI API key)
+- Batch operations and tag filtering
+- Statistics dashboard with detailed metrics
+
+### 🎨 Appearance
+- Light and dark mode toggle in Settings
+- Brutalist design aesthetic - minimal, functional, high-contrast
+- Customizable window size
 
 **Note**: Screenshots work without an API key - you just won't get AI-generated descriptions and tags.
+
+---
+
+## New Features
+
+### October 2025
+
+**Oct 17 - Markdown Support**: Scratchpad now includes markdown formatting with edit/preview mode toggle. Write in markdown syntax and preview rendered output with proper headings, bold, italic, code blocks, links, and more.
+
+**Oct 17 - Image Thumbnails in Clipboard**: Clipboard history now displays actual 60x60px thumbnails of copied images instead of just icons, making it easier to visually identify and find specific images.
+
+**Oct 17 - Dark Mode**: Added system-wide dark mode toggle in Settings (Cmd+,) with instant UI updates. Choose between light and dark themes with carefully designed color palettes for both modes.
+
+**Oct 17 - Screenshot Web App Integration**: Screenshots tab now embeds the full-featured web app via WebView, providing instant access to table view, favorites, advanced search, batch operations, and all web app features without rebuilding native UI.
+
+**Oct 17 - Tab Cycling**: Added Tab key support to cycle through tabs (Notes → Clipboard → Screenshots → Notes) for faster keyboard-only navigation.
+
+**Oct 17 - Customizable Window Size**: Settings now include width and height sliders (600-1400px width, 400-1000px height) to customize the app window to your preferred dimensions.
+
+---
 
 ## Quick Start
 

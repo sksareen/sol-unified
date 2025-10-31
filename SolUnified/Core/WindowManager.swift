@@ -24,9 +24,14 @@ class BorderlessWindow: NSWindow {
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
     }
+    
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        // Allow normal mouse interaction
+    }
 }
 
-class WindowManager: ObservableObject {
+class WindowManager: NSObject, ObservableObject {
     static let shared = WindowManager()
     
     @Published var isVisible = false
@@ -36,13 +41,15 @@ class WindowManager: ObservableObject {
     private var windowWidth: CGFloat { settings.windowWidth }
     private var windowHeight: CGFloat { settings.windowHeight }
     
-    private init() {}
+    private override init() {
+        super.init()
+    }
     
     func setup(with contentView: some View) {
         guard let screen = NSScreen.main else { return }
         
         let screenFrame = screen.visibleFrame
-        let xPos = screenFrame.maxX - windowWidth - 20
+        let xPos = screenFrame.maxX - windowWidth - 20 - 38
         let yPos = screenFrame.maxY - windowHeight - 20
         
         let frame = NSRect(x: xPos, y: yPos, width: windowWidth, height: windowHeight)
@@ -57,6 +64,9 @@ class WindowManager: ObservableObject {
         window?.contentView = NSHostingView(rootView: contentView)
         window?.setFrameTopLeftPoint(NSPoint(x: xPos, y: yPos + windowHeight))
         
+        // Set up window delegate to detect when window loses focus
+        window?.delegate = self
+        
         // Initially hide the window off-screen
         hideWindow(animated: false)
     }
@@ -69,7 +79,7 @@ class WindowManager: ObservableObject {
         guard let window = window, let screen = NSScreen.main else { return }
         
         let screenFrame = screen.visibleFrame
-        let targetX = screenFrame.maxX - windowWidth - 20
+        let targetX = screenFrame.maxX - windowWidth - 20 + 38
         let targetY = screenFrame.maxY - windowHeight - 20
         let targetFrame = NSRect(x: targetX, y: targetY, width: windowWidth, height: windowHeight)
         
@@ -112,6 +122,21 @@ class WindowManager: ObservableObject {
         }
         
         isVisible = false
+    }
+}
+
+// MARK: - NSWindowDelegate
+extension WindowManager: NSWindowDelegate {
+    func windowDidResignKey(_ notification: Notification) {
+        // Don't hide if settings sheet is showing
+        if AppSettings.shared.showSettings {
+            return
+        }
+        
+        // Hide window when it loses focus (user clicks outside)
+        if isVisible {
+            hideWindow(animated: true)
+        }
     }
 }
 

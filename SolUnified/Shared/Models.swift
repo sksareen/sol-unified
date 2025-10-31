@@ -105,5 +105,6 @@ enum AppTab: String {
     case notes
     case clipboard
     case screenshots
+    case timer
 }
 
