@@ -79,7 +79,7 @@ class WindowManager: NSObject, ObservableObject {
         guard let window = window, let screen = NSScreen.main else { return }
         
         let screenFrame = screen.visibleFrame
-        let targetX = screenFrame.maxX - windowWidth - 20 + 38
+        let targetX = screenFrame.maxX - windowWidth - 20 + 20
         let targetY = screenFrame.maxY - windowHeight - 20
         let targetFrame = NSRect(x: targetX, y: targetY, width: windowWidth, height: windowHeight)
         
