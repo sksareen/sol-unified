@@ -8,6 +8,10 @@
 import Foundation
 import Combine
 import AppKit
+import CoreGraphics
+
+// Compact logging
+private let log = ActivityLogger.shared
 
 class ActivityStore: ObservableObject {
     static let shared = ActivityStore()
@@ -23,6 +27,7 @@ class ActivityStore: ObservableObject {
     private let db = Database.shared
     private let monitor = ActivityMonitor.shared
     private let idleDetector = IdleDetector.shared
+    private let inputMonitor = InputMonitor.shared
     
     private var eventBuffer: [ActivityEvent] = []
     private let bufferSize = 50
@@ -41,6 +46,11 @@ class ActivityStore: ObservableObject {
     private var lastDeduplicationTime: Date?
     private let deduplicationWindow: TimeInterval = 0.5 // Ignore duplicate events within 0.5 seconds
     
+    // App activation deduplication - track last activation separately
+    private var lastAppActivationBundleId: String?
+    private var lastAppActivationTime: Date?
+    private let appActivationDeduplicationWindow: TimeInterval = 2.0 // Ignore duplicate activations within 2 seconds
+    
     private init() {
         setupCallbacks()
     }
@@ -48,17 +58,25 @@ class ActivityStore: ObservableObject {
     func startMonitoring() {
         // Prevent multiple simultaneous starts
         guard !isMonitoringActive else {
-            print("ActivityStore: Already monitoring, ignoring startMonitoring() call")
+            log.logSkip("already monitoring")
             return
         }
         
         isEnabled = AppSettings.shared.activityLoggingEnabled
         guard isEnabled else { return }
         
-        print("ActivityStore: Starting monitoring...")
+        log.logStatus("Monitoring started", symbol: "▶")
         
         monitor.startMonitoring()
         idleDetector.startMonitoring()
+        
+        // Start input monitoring if enabled
+        if AppSettings.shared.keyboardTrackingEnabled {
+            inputMonitor.startMonitoring()
+        }
+        if AppSettings.shared.mouseTrackingEnabled {
+            inputMonitor.startMouseTracking()
+        }
         
         startFlushTimer()
         startHeartbeatTimer()
@@ -69,6 +87,8 @@ class ActivityStore: ObservableObject {
         // Reset deduplication tracking
         lastEventHash = nil
         lastDeduplicationTime = nil
+        lastAppActivationBundleId = nil
+        lastAppActivationTime = nil
         
         // Log current app state immediately (only once)
         if let currentApp = NSWorkspace.shared.frontmostApplication {
@@ -85,13 +105,15 @@ class ActivityStore: ObservableObject {
     func stopMonitoring() {
         guard isMonitoringActive else { return }
         
-        print("ActivityStore: Stopping monitoring...")
+        log.logStatus("Monitoring stopped", symbol: "⏸")
         
         // Flush any pending events
         flushBuffer()
         
         monitor.stopMonitoring()
         idleDetector.stopMonitoring()
+        inputMonitor.stopMonitoring()
+        inputMonitor.stopMouseTracking()
         
         flushTimer?.invalidate()
         flushTimer = nil
@@ -104,6 +126,8 @@ class ActivityStore: ObservableObject {
         // Reset deduplication tracking
         lastEventHash = nil
         lastDeduplicationTime = nil
+        lastAppActivationBundleId = nil
+        lastAppActivationTime = nil
     }
     
     func loadRecentEvents(limit: Int = 100) {
@@ -382,6 +406,10 @@ class ActivityStore: ObservableObject {
             self?.handleWindowTitleChange(title)
         }
         
+        monitor.onWindowClosed = { [weak self] title in
+            self?.handleWindowClosed(title)
+        }
+        
         monitor.onScreenSleep = { [weak self] in
             self?.addEvent(ActivityEvent(eventType: .screenSleep, timestamp: Date()))
         }
@@ -396,6 +424,22 @@ class ActivityStore: ObservableObject {
         
         idleDetector.onIdleEnd = { [weak self] in
             self?.addEvent(ActivityEvent(eventType: .idleEnd, timestamp: Date()))
+        }
+        
+        inputMonitor.onKeyPress = { [weak self] description, keyCode in
+            self?.handleKeyPress(description: description, keyCode: keyCode)
+        }
+        
+        inputMonitor.onMouseClick = { [weak self] position, button in
+            self?.handleMouseClick(position: position, button: button)
+        }
+        
+        inputMonitor.onMouseMove = { [weak self] position in
+            self?.handleMouseMove(position: position)
+        }
+        
+        inputMonitor.onMouseScroll = { [weak self] position, delta in
+            self?.handleMouseScroll(position: position, delta: delta)
         }
     }
     
@@ -432,25 +476,30 @@ class ActivityStore: ObservableObject {
     }
     
     private func handleAppActivate(_ app: NSRunningApplication, previousApp: NSRunningApplication?) {
+        guard let bundleId = app.bundleIdentifier else { return }
         let now = Date()
         
-        // Skip if same app reactivated within 1 second (more aggressive deduplication)
-        if let previousApp = previousApp,
-           previousApp.bundleIdentifier == app.bundleIdentifier,
-           let lastEvent = events.first,
-           now.timeIntervalSince(lastEvent.timestamp) < 1.0 {
-            print("ActivityStore: Skipping duplicate app activation: \(app.localizedName ?? "unknown")")
+        // Aggressive deduplication: Check if we just logged this exact app activation
+        if let lastBundleId = lastAppActivationBundleId,
+           let lastTime = lastAppActivationTime,
+           bundleId == lastBundleId,
+           now.timeIntervalSince(lastTime) < appActivationDeduplicationWindow {
+            log.logSkip("duplicate activation", eventType: .appActivate)
             return
         }
         
-        // Also check if we just logged an activation for this app very recently
+        // Also check the events array as a fallback (though this might be stale)
         if let lastEvent = events.first,
            lastEvent.eventType == .appActivate,
-           lastEvent.appBundleId == app.bundleIdentifier,
-           now.timeIntervalSince(lastEvent.timestamp) < 0.5 {
-            print("ActivityStore: Skipping rapid duplicate activation: \(app.localizedName ?? "unknown")")
+           lastEvent.appBundleId == bundleId,
+           now.timeIntervalSince(lastEvent.timestamp) < appActivationDeduplicationWindow {
+            log.logSkip("duplicate activation", eventType: .appActivate)
             return
         }
+        
+        // Update deduplication tracking BEFORE logging
+        lastAppActivationBundleId = bundleId
+        lastAppActivationTime = now
         
         lastActiveApp = app
         lastActiveAppSessionStart = now
@@ -458,11 +507,13 @@ class ActivityStore: ObservableObject {
         let windowTitle = monitor.getActiveWindowTitle()
         let event = ActivityEvent(
             eventType: .appActivate,
-            appBundleId: app.bundleIdentifier,
+            appBundleId: bundleId,
             appName: app.localizedName,
             windowTitle: windowTitle,
             timestamp: now
         )
+        
+        // Log will happen in addEvent via logEvent
         addEvent(event)
     }
     
@@ -473,14 +524,24 @@ class ActivityStore: ObservableObject {
             return
         }
         
-        // Additional deduplication: Skip if we just logged a window title change for this app
         let now = Date()
+        
+        // Skip window title changes immediately after app activation (within 3 seconds)
+        // This prevents duplicate events when switching apps
+        if let lastActivationTime = lastAppActivationTime,
+           bundleId == lastAppActivationBundleId,
+           now.timeIntervalSince(lastActivationTime) < 3.0 {
+            log.logSkip("window change too soon", eventType: .windowTitleChange)
+            return
+        }
+        
+        // Additional deduplication: Skip if we just logged a window title change for this app
         if let lastEvent = events.first,
            lastEvent.eventType == .windowTitleChange,
            lastEvent.appBundleId == bundleId,
            lastEvent.windowTitle == title,
-           now.timeIntervalSince(lastEvent.timestamp) < 1.0 {
-            print("ActivityStore: Skipping duplicate window title change")
+           now.timeIntervalSince(lastEvent.timestamp) < 2.0 {
+            log.logSkip("duplicate window title", eventType: .windowTitleChange)
             return
         }
         
@@ -494,12 +555,106 @@ class ActivityStore: ObservableObject {
         addEvent(event)
     }
     
+    private func handleWindowClosed(_ title: String?) {
+        guard let app = monitor.getCurrentApp(),
+              let bundleId = app.bundleIdentifier,
+              let appName = app.localizedName else {
+            return
+        }
+        
+        let event = ActivityEvent(
+            eventType: .windowClosed,
+            appBundleId: bundleId,
+            appName: appName,
+            windowTitle: title,
+            timestamp: Date()
+        )
+        addEvent(event)
+    }
+    
+    private func handleKeyPress(description: String?, keyCode: CGKeyCode) {
+        guard let app = monitor.getCurrentApp(),
+              let bundleId = app.bundleIdentifier,
+              let appName = app.localizedName else {
+            return
+        }
+        
+        // Store key count in event_data as JSON
+        let eventData = "{\"keyCount\":\"\(description ?? "1")\",\"keyCode\":\(keyCode)}"
+        
+        let event = ActivityEvent(
+            eventType: .keyPress,
+            appBundleId: bundleId,
+            appName: appName,
+            eventData: eventData,
+            timestamp: Date()
+        )
+        addEvent(event)
+    }
+    
+    private func handleMouseClick(position: NSPoint, button: Int) {
+        guard let app = monitor.getCurrentApp(),
+              let bundleId = app.bundleIdentifier,
+              let appName = app.localizedName else {
+            return
+        }
+        
+        let eventData = "{\"x\":\(position.x),\"y\":\(position.y),\"button\":\(button)}"
+        
+        let event = ActivityEvent(
+            eventType: .mouseClick,
+            appBundleId: bundleId,
+            appName: appName,
+            eventData: eventData,
+            timestamp: Date()
+        )
+        addEvent(event)
+    }
+    
+    private func handleMouseMove(position: NSPoint) {
+        guard let app = monitor.getCurrentApp(),
+              let bundleId = app.bundleIdentifier,
+              let appName = app.localizedName else {
+            return
+        }
+        
+        let eventData = "{\"x\":\(position.x),\"y\":\(position.y)}"
+        
+        let event = ActivityEvent(
+            eventType: .mouseMove,
+            appBundleId: bundleId,
+            appName: appName,
+            eventData: eventData,
+            timestamp: Date()
+        )
+        addEvent(event)
+    }
+    
+    private func handleMouseScroll(position: NSPoint, delta: Double) {
+        guard let app = monitor.getCurrentApp(),
+              let bundleId = app.bundleIdentifier,
+              let appName = app.localizedName else {
+            return
+        }
+        
+        let eventData = "{\"x\":\(position.x),\"y\":\(position.y),\"delta\":\(delta)}"
+        
+        let event = ActivityEvent(
+            eventType: .mouseScroll,
+            appBundleId: bundleId,
+            appName: appName,
+            eventData: eventData,
+            timestamp: Date()
+        )
+        addEvent(event)
+    }
+    
     private func addEvent(_ event: ActivityEvent) {
         // Validate timestamp
         let maxFutureTime = Date().addingTimeInterval(3600) // 1 hour in future
         
         guard event.timestamp <= maxFutureTime else {
-            print("Invalid event timestamp: too far in future")
+            log.logError("invalid timestamp")
             return
         }
         
@@ -512,7 +667,7 @@ class ActivityStore: ObservableObject {
            let lastTime = lastDeduplicationTime,
            eventHash == lastHash,
            now.timeIntervalSince(lastTime) < deduplicationWindow {
-            print("ActivityStore: Skipping duplicate event: \(event.eventType.rawValue)")
+            log.logSkip("duplicate event", eventType: event.eventType)
             return
         }
         
@@ -521,6 +676,9 @@ class ActivityStore: ObservableObject {
         lastDeduplicationTime = now
         
         eventBuffer.append(event)
+        
+        // Log event
+        log.logEvent(event)
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -580,11 +738,9 @@ class ActivityStore: ObservableObject {
         eventBuffer.removeAll()
         
         let success = db.insertActivityEvents(eventsToFlush)
+        log.logFlush(count: eventsToFlush.count, success: success)
         
-        if success {
-            print("Flushed \(eventsToFlush.count) activity events to database")
-        } else {
-            print("Failed to flush activity events")
+        if !success {
             // Re-add to buffer for retry
             eventBuffer.insert(contentsOf: eventsToFlush, at: 0)
             monitoringError = "Failed to save events to database"
@@ -611,6 +767,132 @@ class ActivityStore: ObservableObject {
             timestamp: Database.stringToDate(row["timestamp"] as? String ?? "") ?? Date(),
             createdAt: Database.stringToDate(row["created_at"] as? String ?? "") ?? Date()
         )
+    }
+    
+    // MARK: - Timeline Methods
+    
+    func calculateTimelineBuckets(for range: TimeRange) -> [TimelineBucket] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let (startDate, endDate): (Date, Date) = {
+            switch range {
+            case .today:
+                return (calendar.startOfDay(for: now), now)
+            case .last7Days:
+                let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now))!
+                return (start, now)
+            case .last30Days:
+                let start = calendar.date(byAdding: .day, value: -29, to: calendar.startOfDay(for: now))!
+                return (start, now)
+            }
+        }()
+        
+        let bucketSize: DateComponents = {
+            switch range {
+            case .today:
+                return DateComponents(hour: 1)
+            case .last7Days:
+                return DateComponents(day: 1)
+            case .last30Days:
+                return DateComponents(day: 1)
+            }
+        }()
+        
+        var buckets: [TimelineBucket] = []
+        var currentStart = startDate
+        
+        while currentStart < endDate {
+            guard let currentEnd = calendar.date(byAdding: bucketSize, to: currentStart),
+                  currentEnd <= endDate else {
+                break
+            }
+            
+            let eventsInBucket = getEvents(from: currentStart, to: currentEnd)
+            let intensity = calculateIntensity(events: eventsInBucket)
+            let topApp = findTopApp(in: eventsInBucket)
+            let activeMinutes = calculateActiveMinutes(events: eventsInBucket)
+            
+            let bucket = TimelineBucket(
+                startTime: currentStart,
+                endTime: currentEnd,
+                eventCount: eventsInBucket.count,
+                activeMinutes: activeMinutes,
+                topApp: topApp,
+                intensity: intensity
+            )
+            
+            buckets.append(bucket)
+            currentStart = currentEnd
+        }
+        
+        return buckets
+    }
+    
+    private func getEvents(from: Date, to: Date) -> [ActivityEvent] {
+        let startString = Database.dateToString(from)
+        let endString = Database.dateToString(to)
+        
+        let results = db.query(
+            "SELECT * FROM activity_log WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp ASC",
+            parameters: [startString, endString]
+        )
+        
+        return results.map { eventFromRow($0) }
+    }
+    
+    private func calculateIntensity(events: [ActivityEvent]) -> Double {
+        guard !events.isEmpty else { return 0.0 }
+        
+        // Calculate intensity based on event count and app switches
+        let switchCount = events.filter { $0.eventType == .appActivate }.count
+        let totalEvents = events.count
+        
+        // Normalize to 0-1 range
+        // For hourly buckets: expect max ~20 events/hour
+        // For daily buckets: expect max ~500 events/day
+        let maxExpected: Double = 20.0 // Base for hourly
+        let intensity = min(1.0, Double(totalEvents) / maxExpected)
+        
+        // Boost intensity for high switch activity
+        let switchBoost = min(0.3, Double(switchCount) / 10.0)
+        
+        return min(1.0, intensity + switchBoost)
+    }
+    
+    private func findTopApp(in events: [ActivityEvent]) -> String? {
+        var appCounts: [String: Int] = [:]
+        
+        for event in events {
+            if event.eventType == .appActivate,
+               let appName = event.appName {
+                appCounts[appName, default: 0] += 1
+            }
+        }
+        
+        return appCounts.max(by: { $0.value < $1.value })?.key
+    }
+    
+    private func calculateActiveMinutes(events: [ActivityEvent]) -> Int {
+        guard !events.isEmpty else { return 0 }
+        
+        // Count unique minutes with activity
+        var activeMinutes: Set<String> = []
+        let calendar = Calendar.current
+        
+        for event in events {
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: event.timestamp)
+            if let year = components.year,
+               let month = components.month,
+               let day = components.day,
+               let hour = components.hour,
+               let minute = components.minute {
+                let minuteKey = "\(year)-\(month)-\(day)-\(hour)-\(minute)"
+                activeMinutes.insert(minuteKey)
+            }
+        }
+        
+        return activeMinutes.count
     }
 }
 

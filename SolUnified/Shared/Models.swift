@@ -106,11 +106,16 @@ enum ActivityEventType: String, Codable {
     case appTerminate
     case appActivate
     case windowTitleChange
+    case windowClosed
     case idleStart
     case idleEnd
     case screenSleep
     case screenWake
     case heartbeat
+    case keyPress
+    case mouseClick
+    case mouseMove
+    case mouseScroll
 }
 
 struct ActivityEvent: Identifiable, Codable {
@@ -166,6 +171,40 @@ struct ActivityStats: Codable {
         let appName: String
         let totalTime: TimeInterval
         let sessionCount: Int
+    }
+}
+
+// MARK: - Timeline Models
+enum TimeRange: String, CaseIterable {
+    case today
+    case last7Days
+    case last30Days
+    
+    var displayName: String {
+        switch self {
+        case .today: return "Today"
+        case .last7Days: return "7 Days"
+        case .last30Days: return "30 Days"
+        }
+    }
+}
+
+struct TimelineBucket: Identifiable {
+    let id = UUID()
+    let startTime: Date
+    let endTime: Date
+    let eventCount: Int
+    let activeMinutes: Int
+    let topApp: String?
+    let intensity: Double // 0.0-1.0 for visual weight
+    
+    init(startTime: Date, endTime: Date, eventCount: Int, activeMinutes: Int = 0, topApp: String? = nil, intensity: Double = 0.0) {
+        self.startTime = startTime
+        self.endTime = endTime
+        self.eventCount = eventCount
+        self.activeMinutes = activeMinutes
+        self.topApp = topApp
+        self.intensity = intensity
     }
 }
 

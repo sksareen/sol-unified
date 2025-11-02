@@ -19,10 +19,15 @@ class ActivityMonitor {
     private var currentApp: NSRunningApplication?
     private var currentSessionStartTime: Date?
     
+    // Window tracking for closure detection
+    private var trackedWindows: Set<String> = [] // Track window titles we've seen
+    private var windowTrackingTimer: Timer?
+    
     var onAppLaunch: ((NSRunningApplication) -> Void)?
     var onAppTerminate: ((NSRunningApplication) -> Void)?
     var onAppActivate: ((NSRunningApplication, NSRunningApplication?) -> Void)?
     var onWindowTitleChange: ((String?) -> Void)?
+    var onWindowClosed: ((String?) -> Void)?
     var onScreenSleep: (() -> Void)?
     var onScreenWake: (() -> Void)?
     
@@ -93,6 +98,9 @@ class ActivityMonitor {
         
         // Start window title polling
         startWindowTitlePolling()
+        
+        // Start window tracking for closure detection
+        startWindowTracking()
     }
     
     func stopMonitoring() {
@@ -104,10 +112,14 @@ class ActivityMonitor {
         windowTitleTimer?.invalidate()
         windowTitleTimer = nil
         
+        windowTrackingTimer?.invalidate()
+        windowTrackingTimer = nil
+        
         currentApp = nil
         currentSessionStartTime = nil
         lastWindowTitle = nil
         lastWindowTitleTime = nil
+        trackedWindows.removeAll()
     }
     
     private func startWindowTitlePolling() {
@@ -125,6 +137,19 @@ class ActivityMonitor {
         checkWindowTitle()
     }
     
+    private func startWindowTracking() {
+        windowTrackingTimer?.invalidate()
+        
+        // Check for closed windows every 5 seconds
+        windowTrackingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.checkWindowClosures()
+        }
+        
+        if let timer = windowTrackingTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+    
     private func checkWindowTitle() {
         let title = getActiveWindowTitle()
         
@@ -132,15 +157,83 @@ class ActivityMonitor {
         if let title = title, title != lastWindowTitle {
             let now = Date()
             if lastWindowTitleTime == nil || now.timeIntervalSince(lastWindowTitleTime!) >= 10 {
+                // Track this window
+                trackedWindows.insert(title)
                 onWindowTitleChange?(title)
                 lastWindowTitle = title
                 lastWindowTitleTime = now
             }
         } else if title == nil && lastWindowTitle != nil {
             // Window title became unavailable (e.g., app closed)
+            trackedWindows.remove(lastWindowTitle!)
             lastWindowTitle = nil
             lastWindowTitleTime = Date()
         }
+    }
+    
+    private func checkWindowClosures() {
+        guard let currentTitle = getActiveWindowTitle() else {
+            // No active window, check if we had tracked windows
+            if let lastTitle = lastWindowTitle {
+                trackedWindows.remove(lastTitle)
+                onWindowClosed?(lastTitle)
+                lastWindowTitle = nil
+            }
+            return
+        }
+        
+        // Check if any tracked windows are no longer accessible
+        let allWindows = getAllWindows()
+        let activeWindows = Set(allWindows)
+        
+        for trackedWindow in trackedWindows {
+            if !activeWindows.contains(trackedWindow) && trackedWindow != currentTitle {
+                // Window was closed
+                trackedWindows.remove(trackedWindow)
+                onWindowClosed?(trackedWindow)
+            }
+        }
+    }
+    
+    private func getAllWindows() -> [String] {
+        guard AXIsProcessTrusted() else { return [] }
+        
+        var windows: [String] = []
+        
+        // Get all running applications
+        let runningApps = NSWorkspace.shared.runningApplications
+        
+        for app in runningApps {
+            guard app.bundleIdentifier != nil else { continue }
+            
+            let pid = app.processIdentifier
+            let appElement = AXUIElementCreateApplication(pid)
+            
+            var windowList: AnyObject?
+            guard AXUIElementCopyAttributeValue(
+                appElement,
+                kAXWindowsAttribute as CFString,
+                &windowList
+            ) == .success,
+            let windowsRef = windowList as? [AXUIElement] else {
+                continue
+            }
+            
+            for window in windowsRef {
+                var title: AnyObject?
+                if AXUIElementCopyAttributeValue(
+                    window,
+                    kAXTitleAttribute as CFString,
+                    &title
+                ) == .success,
+                let titleString = title as? String,
+                !titleString.isEmpty {
+                    windows.append(titleString)
+                }
+            }
+        }
+        
+        return windows
     }
     
     func getActiveWindowTitle() -> String? {

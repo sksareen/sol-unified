@@ -14,9 +14,19 @@ struct ActivityView: View {
     @State private var selectedEventType: ActivityEventType?
     @State private var selectedApp: String?
     @State private var showingClearConfirm = false
+    @State private var selectedTimeRange: DateInterval?
+    @State private var timelineRange: TimeRange = .today
+    @State private var timelineBuckets: [TimelineBucket] = []
     
     var filteredEvents: [ActivityEvent] {
         var events = store.events
+        
+        // Filter by selected time range from timeline
+        if let timeRange = selectedTimeRange {
+            events = events.filter { event in
+                timeRange.contains(event.timestamp)
+            }
+        }
         
         if let eventType = selectedEventType {
             events = events.filter { $0.eventType == eventType }
@@ -107,7 +117,7 @@ struct ActivityView: View {
                     
                     Picker("Event Type", selection: $selectedEventType) {
                         Text("All Events").tag(nil as ActivityEventType?)
-                        ForEach([ActivityEventType.appActivate, .appLaunch, .appTerminate, .windowTitleChange, .idleStart, .idleEnd], id: \.self) { type in
+                        ForEach([ActivityEventType.appActivate, .appLaunch, .appTerminate, .windowTitleChange, .windowClosed, .keyPress, .mouseClick, .mouseMove, .mouseScroll, .idleStart, .idleEnd], id: \.self) { type in
                             Text(typeLabel(type)).tag(type as ActivityEventType?)
                         }
                     }
@@ -125,6 +135,18 @@ struct ActivityView: View {
                     .foregroundColor(Color.brutalistBorder),
                 alignment: .bottom
             )
+            
+            // Timeline
+            if settings.activityLoggingEnabled && !timelineBuckets.isEmpty {
+                ActivityTimelineView(
+                    selectedTimeRange: $selectedTimeRange,
+                    buckets: timelineBuckets,
+                    timeRange: $timelineRange
+                )
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.md)
+                .background(Color.brutalistBgPrimary)
+            }
             
             // Content
             if !settings.activityLoggingEnabled {
@@ -240,6 +262,25 @@ struct ActivityView: View {
                 store.startMonitoring()
             }
             store.calculateStatsAsync()
+            loadTimelineBuckets()
+        }
+        .onChange(of: timelineRange) { _ in
+            loadTimelineBuckets()
+            selectedTimeRange = nil // Clear selection when changing range
+        }
+        .onChange(of: store.events.count) { _ in
+            // Refresh timeline when new events arrive
+            loadTimelineBuckets()
+        }
+    }
+    
+    private func loadTimelineBuckets() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let buckets = store.calculateTimelineBuckets(for: timelineRange)
+            
+            DispatchQueue.main.async {
+                self.timelineBuckets = buckets
+            }
         }
     }
     
@@ -315,6 +356,11 @@ struct ActivityView: View {
         case .appTerminate: return "App Terminate"
         case .appActivate: return "App Switch"
         case .windowTitleChange: return "Window Change"
+        case .windowClosed: return "Window Closed"
+        case .keyPress: return "Keyboard"
+        case .mouseClick: return "Mouse Click"
+        case .mouseMove: return "Mouse Move"
+        case .mouseScroll: return "Mouse Scroll"
         case .idleStart: return "Idle Start"
         case .idleEnd: return "Idle End"
         case .screenSleep: return "Screen Sleep"
@@ -406,6 +452,11 @@ struct ActivityEventCard: View {
         case .appTerminate: return "xmark.circle.fill"
         case .appActivate: return "app.badge.fill"
         case .windowTitleChange: return "square.stack.3d.up.fill"
+        case .windowClosed: return "xmark.square.fill"
+        case .keyPress: return "keyboard.fill"
+        case .mouseClick: return "cursorarrow.click"
+        case .mouseMove: return "cursorarrow.move"
+        case .mouseScroll: return "arrow.up.and.down"
         case .idleStart: return "moon.fill"
         case .idleEnd: return "sun.max.fill"
         case .screenSleep: return "moon.zzz.fill"
@@ -418,9 +469,9 @@ struct ActivityEventCard: View {
         switch event.eventType {
         case .appLaunch, .appActivate, .screenWake, .idleEnd:
             return Color.brutalistAccent
-        case .appTerminate, .screenSleep, .idleStart:
+        case .appTerminate, .windowClosed, .screenSleep, .idleStart:
             return Color.brutalistTextMuted
-        case .windowTitleChange, .heartbeat:
+        case .windowTitleChange, .keyPress, .mouseClick, .mouseMove, .mouseScroll, .heartbeat:
             return Color.brutalistTextSecondary
         }
     }
@@ -432,6 +483,28 @@ struct ActivityEventCard: View {
             case .appTerminate: return "\(appName) terminated"
             case .appActivate: return "Switched to \(appName)"
             case .windowTitleChange: return "Window changed in \(appName)"
+            case .windowClosed:
+                if let windowTitle = event.windowTitle {
+                    return "Window closed: \(windowTitle)"
+                }
+                return "Window closed in \(appName)"
+            case .keyPress:
+                if let eventData = event.eventData,
+                   let data = eventData.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let keyCount = json["keyCount"] as? String {
+                    return "\(keyCount) keystrokes in \(appName)"
+                }
+                return "Keystrokes in \(appName)"
+            case .mouseClick:
+                if let eventData = event.eventData,
+                   let _ = eventData.data(using: .utf8),
+                   let _ = try? JSONSerialization.jsonObject(with: eventData.data(using: .utf8)!, options: []) as? [String: Any] {
+                    return "Mouse click in \(appName)"
+                }
+                return "Mouse click in \(appName)"
+            case .mouseMove: return "Mouse moved in \(appName)"
+            case .mouseScroll: return "Mouse scroll in \(appName)"
             case .idleStart: return "User idle"
             case .idleEnd: return "User active"
             case .screenSleep: return "Screen slept"
@@ -449,6 +522,11 @@ struct ActivityEventCard: View {
         case .appTerminate: return "Terminate"
         case .appActivate: return "Switch"
         case .windowTitleChange: return "Window"
+        case .windowClosed: return "Closed"
+        case .keyPress: return "Keyboard"
+        case .mouseClick: return "Click"
+        case .mouseMove: return "Move"
+        case .mouseScroll: return "Scroll"
         case .idleStart: return "Idle"
         case .idleEnd: return "Active"
         case .screenSleep: return "Sleep"

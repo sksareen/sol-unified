@@ -35,12 +35,37 @@ class AppSettings: ObservableObject {
                 ActivityStore.shared.startMonitoring()
             } else {
                 ActivityStore.shared.stopMonitoring()
+                // Also disable input monitoring when activity logging is disabled
+                InputMonitor.shared.stopMonitoring()
+                InputMonitor.shared.stopMouseTracking()
             }
         }
     }
     
     @Published var activityLogRetentionDays: Int {
         didSet { UserDefaults.standard.set(activityLogRetentionDays, forKey: "activityLogRetentionDays") }
+    }
+    
+    @Published var keyboardTrackingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(keyboardTrackingEnabled, forKey: "keyboardTrackingEnabled")
+            if !keyboardTrackingEnabled {
+                InputMonitor.shared.stopMonitoring()
+            } else if activityLoggingEnabled {
+                InputMonitor.shared.startMonitoring()
+            }
+        }
+    }
+    
+    @Published var mouseTrackingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(mouseTrackingEnabled, forKey: "mouseTrackingEnabled")
+            if !mouseTrackingEnabled {
+                InputMonitor.shared.stopMouseTracking()
+            } else if activityLoggingEnabled {
+                InputMonitor.shared.startMouseTracking()
+            }
+        }
     }
     
     @Published var showSettings: Bool = false
@@ -56,6 +81,8 @@ class AppSettings: ObservableObject {
         
         self.activityLoggingEnabled = UserDefaults.standard.bool(forKey: "activityLoggingEnabled")
         self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
+        self.keyboardTrackingEnabled = UserDefaults.standard.bool(forKey: "keyboardTrackingEnabled")
+        self.mouseTrackingEnabled = UserDefaults.standard.bool(forKey: "mouseTrackingEnabled")
     }
     
     func resetToDefaults() {
@@ -295,6 +322,48 @@ struct SettingsView: View {
                                 }
                                 .pickerStyle(SegmentedPickerStyle())
                             }
+                            .padding(Spacing.md)
+                            .background(Color.brutalistBgSecondary)
+                            .cornerRadius(BorderRadius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: BorderRadius.sm)
+                                    .stroke(Color.brutalistBorder, lineWidth: 1)
+                            )
+                            
+                            // Keyboard Tracking
+                            Toggle(isOn: $settings.keyboardTrackingEnabled) {
+                                VStack(alignment: .leading, spacing: Spacing.xs) {
+                                    Text("Keyboard Tracking")
+                                        .font(.system(size: Typography.bodySize))
+                                        .foregroundColor(Color.brutalistTextSecondary)
+                                    
+                                    Text("Track keystrokes (requires Input Monitoring permission)")
+                                        .font(.system(size: Typography.smallSize))
+                                        .foregroundColor(Color.brutalistTextMuted)
+                                }
+                            }
+                            .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
+                            .padding(Spacing.md)
+                            .background(Color.brutalistBgSecondary)
+                            .cornerRadius(BorderRadius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: BorderRadius.sm)
+                                    .stroke(Color.brutalistBorder, lineWidth: 1)
+                            )
+                            
+                            // Mouse Tracking
+                            Toggle(isOn: $settings.mouseTrackingEnabled) {
+                                VStack(alignment: .leading, spacing: Spacing.xs) {
+                                    Text("Mouse Tracking")
+                                        .font(.system(size: Typography.bodySize))
+                                        .foregroundColor(Color.brutalistTextSecondary)
+                                    
+                                    Text("Track mouse clicks, movement, and scrolling")
+                                        .font(.system(size: Typography.smallSize))
+                                        .foregroundColor(Color.brutalistTextMuted)
+                                }
+                            }
+                            .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
                             .padding(Spacing.md)
                             .background(Color.brutalistBgSecondary)
                             .cornerRadius(BorderRadius.sm)
