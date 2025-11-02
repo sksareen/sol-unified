@@ -28,6 +28,21 @@ class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(screenshotsDirectory, forKey: "screenshotsDirectory") }
     }
     
+    @Published var activityLoggingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(activityLoggingEnabled, forKey: "activityLoggingEnabled")
+            if activityLoggingEnabled {
+                ActivityStore.shared.startMonitoring()
+            } else {
+                ActivityStore.shared.stopMonitoring()
+            }
+        }
+    }
+    
+    @Published var activityLogRetentionDays: Int {
+        didSet { UserDefaults.standard.set(activityLogRetentionDays, forKey: "activityLogRetentionDays") }
+    }
+    
     @Published var showSettings: Bool = false
     
     private init() {
@@ -38,6 +53,9 @@ class AppSettings: ObservableObject {
         // Default screenshots directory - expand tilde
         let defaultDir = (NSHomeDirectory() + "/Pictures/Pics/Screenshots")
         self.screenshotsDirectory = UserDefaults.standard.string(forKey: "screenshotsDirectory") ?? defaultDir
+        
+        self.activityLoggingEnabled = UserDefaults.standard.bool(forKey: "activityLoggingEnabled")
+        self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
     }
     
     func resetToDefaults() {
@@ -234,6 +252,73 @@ struct SettingsView: View {
                             RoundedRectangle(cornerRadius: BorderRadius.sm)
                                 .stroke(Color.brutalistBorder, lineWidth: 1)
                         )
+                    }
+                    .padding(Spacing.lg)
+                    .brutalistCard()
+                    
+                    // Activity Logging Section
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("ACTIVITY LOGGING")
+                            .font(.system(size: Typography.bodySize, weight: .semibold))
+                            .foregroundColor(Color.brutalistTextPrimary)
+                        
+                        Toggle(isOn: $settings.activityLoggingEnabled) {
+                            VStack(alignment: .leading, spacing: Spacing.xs) {
+                                Text("Enable Activity Logging")
+                                    .font(.system(size: Typography.bodySize))
+                                    .foregroundColor(Color.brutalistTextSecondary)
+                                
+                                Text("Track app usage, window titles, and system events")
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                            }
+                        }
+                        .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
+                        .padding(Spacing.md)
+                        .background(Color.brutalistBgSecondary)
+                        .cornerRadius(BorderRadius.sm)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: BorderRadius.sm)
+                                .stroke(Color.brutalistBorder, lineWidth: 1)
+                        )
+                        
+                        if settings.activityLoggingEnabled {
+                            VStack(alignment: .leading, spacing: Spacing.sm) {
+                                Text("Data Retention:")
+                                    .font(.system(size: Typography.smallSize, weight: .medium))
+                                    .foregroundColor(Color.brutalistTextSecondary)
+                                
+                                Picker("Retention", selection: $settings.activityLogRetentionDays) {
+                                    Text("30 days").tag(30)
+                                    Text("90 days").tag(90)
+                                    Text("1 year").tag(365)
+                                }
+                                .pickerStyle(SegmentedPickerStyle())
+                            }
+                            .padding(Spacing.md)
+                            .background(Color.brutalistBgSecondary)
+                            .cornerRadius(BorderRadius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: BorderRadius.sm)
+                                    .stroke(Color.brutalistBorder, lineWidth: 1)
+                            )
+                        }
+                        
+                        Text("All data stored locally, never sent to cloud")
+                            .font(.system(size: Typography.smallSize))
+                            .foregroundColor(Color.brutalistTextMuted)
+                            .padding(.top, Spacing.xs)
+                        
+                        if settings.activityLoggingEnabled {
+                            Button(action: {
+                                ActivityStore.shared.testEvent()
+                            }) {
+                                Text("Test Event")
+                                    .font(.system(size: Typography.bodySize, weight: .medium))
+                            }
+                            .buttonStyle(BrutalistSecondaryButtonStyle())
+                            .padding(.top, Spacing.sm)
+                        }
                     }
                     .padding(Spacing.lg)
                     .brutalistCard()

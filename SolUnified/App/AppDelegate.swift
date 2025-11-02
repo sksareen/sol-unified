@@ -21,6 +21,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Failed to initialize database")
         }
         
+        // Initialize activity store
+        let activityStore = ActivityStore.shared
+        
         // Create main content view
         let contentView = TabNavigator()
             .environmentObject(WindowManager.shared)
@@ -53,6 +56,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start clipboard monitoring after a small delay to ensure app is ready
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             ClipboardMonitor.shared.startMonitoring()
+            
+            // Start activity monitoring if enabled
+            if AppSettings.shared.activityLoggingEnabled {
+                activityStore.startMonitoring()
+            }
+            
+            // Cleanup old activity logs based on retention setting
+            let retentionDays = AppSettings.shared.activityLogRetentionDays
+            _ = Database.shared.cleanupOldActivityLogs(olderThan: retentionDays)
         }
         
         print("Sol Unified started successfully")
@@ -64,6 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Cleanup
         ClipboardMonitor.shared.stopMonitoring()
         TimerStore.shared.stopTimer()
+        ActivityStore.shared.stopMonitoring()
         hotkeyManager.unregister()
     }
     

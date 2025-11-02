@@ -100,11 +100,81 @@ struct ScreenshotStats: Codable {
     }
 }
 
+// MARK: - Activity Models
+enum ActivityEventType: String, Codable {
+    case appLaunch
+    case appTerminate
+    case appActivate
+    case windowTitleChange
+    case idleStart
+    case idleEnd
+    case screenSleep
+    case screenWake
+    case heartbeat
+}
+
+struct ActivityEvent: Identifiable, Codable {
+    let id: Int
+    let eventType: ActivityEventType
+    let appBundleId: String?
+    let appName: String?
+    let windowTitle: String?
+    let eventData: String? // JSON string for additional data
+    let timestamp: Date
+    let createdAt: Date
+    
+    init(id: Int = 0, eventType: ActivityEventType, appBundleId: String? = nil, appName: String? = nil, windowTitle: String? = nil, eventData: String? = nil, timestamp: Date = Date(), createdAt: Date = Date()) {
+        self.id = id
+        self.eventType = eventType
+        self.appBundleId = appBundleId
+        self.appName = appName
+        self.windowTitle = windowTitle
+        self.eventData = eventData
+        self.timestamp = timestamp
+        self.createdAt = createdAt
+    }
+}
+
+struct AppSession: Identifiable, Codable {
+    let id: String
+    let appBundleId: String
+    let appName: String
+    let startTime: Date
+    var endTime: Date?
+    var duration: TimeInterval
+    var windowTitle: String?
+    
+    init(id: String = UUID().uuidString, appBundleId: String, appName: String, startTime: Date, endTime: Date? = nil, duration: TimeInterval = 0, windowTitle: String? = nil) {
+        self.id = id
+        self.appBundleId = appBundleId
+        self.appName = appName
+        self.startTime = startTime
+        self.endTime = endTime
+        self.duration = duration
+        self.windowTitle = windowTitle
+    }
+}
+
+struct ActivityStats: Codable {
+    let totalEvents: Int
+    let totalActiveTime: TimeInterval
+    let topApps: [AppTime]
+    let sessionsToday: Int
+    
+    struct AppTime: Codable {
+        let appBundleId: String
+        let appName: String
+        let totalTime: TimeInterval
+        let sessionCount: Int
+    }
+}
+
 // MARK: - App State
 enum AppTab: String {
     case notes
     case clipboard
     case screenshots
     case timer
+    case activity
 }
 

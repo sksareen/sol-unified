@@ -32,6 +32,11 @@ class Database {
             return false
         }
         
+        // Enable WAL mode for better concurrent access and performance
+        if !execute("PRAGMA journal_mode=WAL;") {
+            print("Warning: Failed to enable WAL mode")
+        }
+        
         return createTables()
     }
     
@@ -81,7 +86,23 @@ class Database {
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_screenshots_filename ON screenshots(filename)",
-            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)"
+            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)",
+            
+            """
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                app_bundle_id TEXT,
+                app_name TEXT,
+                window_title TEXT,
+                event_data TEXT,
+                timestamp TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)"
         ]
         
         for sql in tables {
@@ -178,6 +199,109 @@ class Database {
     
     func lastInsertRowId() -> Int {
         return Int(sqlite3_last_insert_rowid(db))
+    }
+    
+    // MARK: - Activity Log Methods
+    
+    func insertActivityEvents(_ events: [ActivityEvent]) -> Bool {
+        guard !events.isEmpty else { return true }
+        
+        if !beginTransaction() {
+            print("Failed to begin transaction for activity events")
+            return false
+        }
+        
+        let sql = """
+            INSERT INTO activity_log (event_type, app_bundle_id, app_name, window_title, event_data, timestamp, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+        
+        var success = true
+        for event in events {
+            var statement: OpaquePointer?
+            
+            guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+                print("Error preparing activity event insert: \(String(cString: sqlite3_errmsg(db)))")
+                success = false
+                break
+            }
+            
+            // Bind parameters
+            sqlite3_bind_text(statement, 1, (event.eventType.rawValue as NSString).utf8String, -1, nil)
+            
+            if let bundleId = event.appBundleId {
+                sqlite3_bind_text(statement, 2, (bundleId as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 2)
+            }
+            
+            if let appName = event.appName {
+                sqlite3_bind_text(statement, 3, (appName as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 3)
+            }
+            
+            if let windowTitle = event.windowTitle {
+                sqlite3_bind_text(statement, 4, (windowTitle as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 4)
+            }
+            
+            if let eventData = event.eventData {
+                sqlite3_bind_text(statement, 5, (eventData as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 5)
+            }
+            
+            sqlite3_bind_text(statement, 6, (Database.dateToString(event.timestamp) as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 7, (Database.dateToString(event.createdAt) as NSString).utf8String, -1, nil)
+            
+            if sqlite3_step(statement) != SQLITE_DONE {
+                print("Error inserting activity event: \(String(cString: sqlite3_errmsg(db)))")
+                success = false
+            }
+            
+            sqlite3_finalize(statement)
+            
+            if !success {
+                break
+            }
+        }
+        
+        if success {
+            if !commitTransaction() {
+                print("Failed to commit transaction for activity events")
+                success = false
+            }
+        } else {
+            _ = rollbackTransaction()
+        }
+        
+        return success
+    }
+    
+    func cleanupOldActivityLogs(olderThan days: Int) -> Bool {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let cutoffString = Database.dateToString(cutoffDate)
+        
+        return execute(
+            "DELETE FROM activity_log WHERE timestamp < ?",
+            parameters: [cutoffString]
+        )
+    }
+    
+    // MARK: - Transaction Helpers
+    
+    private func beginTransaction() -> Bool {
+        return execute("BEGIN TRANSACTION")
+    }
+    
+    private func commitTransaction() -> Bool {
+        return execute("COMMIT")
+    }
+    
+    private func rollbackTransaction() -> Bool {
+        return execute("ROLLBACK")
     }
     
     deinit {

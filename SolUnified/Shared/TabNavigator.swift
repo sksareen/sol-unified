@@ -47,6 +47,9 @@ struct TabNavigator: View {
                 TimerTabButton(selectedTab: $selectedTab, timerStore: timerStore)
                     .keyboardShortcut("4", modifiers: .command)
                 
+                TabButton(title: "ACTIVITY", tab: .activity, selectedTab: $selectedTab)
+                    .keyboardShortcut("5", modifiers: .command)
+                
                 Spacer()
                 
                 // Settings Button
@@ -83,6 +86,8 @@ struct TabNavigator: View {
                     ScreenshotsView()
                 case .timer:
                     TimerView()
+                case .activity:
+                    ActivityView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -108,6 +113,8 @@ struct TabNavigator: View {
         case .screenshots:
             selectedTab = .timer
         case .timer:
+            selectedTab = .activity
+        case .activity:
             selectedTab = .notes
         }
     }

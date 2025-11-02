@@ -63,6 +63,17 @@ A native macOS app combining notes, clipboard manager, and screenshot organizer 
 
 ### Installation
 
+#### Option 1: Download DMG (Recommended for End Users)
+
+1. **Download** the latest DMG from releases
+2. **Open** the DMG file
+3. **Drag** Sol Unified to Applications
+4. **Launch** from Applications folder
+5. **Grant Accessibility permission** when prompted
+6. **Press Option + `** (backtick) to show/hide the window
+
+#### Option 2: Build from Source
+
 1. **Clone the repository:**
 ```bash
 git clone <repository-url>
@@ -93,6 +104,18 @@ swift run
 4. **Grant Accessibility permission** when prompted (required for global hotkey)
 
 5. **Press Option + `** (backtick) to show/hide the window
+
+#### Option 3: Build Distributable DMG
+
+To create a distributable DMG:
+
+```bash
+./package.sh
+```
+
+The DMG will be created at `.build/SolUnified-1.0.dmg`
+
+For detailed distribution instructions, see [DISTRIBUTION.md](DISTRIBUTION.md)
 
 ## Usage
 
