@@ -65,6 +65,7 @@ class ClipboardMonitor: ObservableObject {
             )
             
             _ = store.saveItem(item)
+            InternalAppTracker.shared.trackClipboardCopy(preview: preview)
             return
         }
         
@@ -88,6 +89,7 @@ class ClipboardMonitor: ObservableObject {
             )
             
             _ = store.saveItem(item)
+            InternalAppTracker.shared.trackClipboardCopy(preview: preview)
             return
         }
     }
@@ -122,6 +124,7 @@ class ClipboardMonitor: ObservableObject {
             )
             
             _ = store.saveItem(item)
+            InternalAppTracker.shared.trackClipboardCopy(preview: "Image")
         } catch {
             print("Failed to save clipboard image: \(error)")
         }

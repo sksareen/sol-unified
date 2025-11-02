@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 // MARK: - Note Model
 struct Note: Identifiable, Codable {
@@ -116,6 +117,31 @@ enum ActivityEventType: String, Codable {
     case mouseClick
     case mouseMove
     case mouseScroll
+    case internalTabSwitch
+    case internalSettingsOpen
+    case internalSettingsClose
+    case internalFeatureOpen
+    case internalFeatureClose
+    case internalNoteCreate
+    case internalNoteEdit
+    case internalNoteDelete
+    case internalNoteView
+    case internalNoteSearch
+    case internalScratchpadEdit
+    case internalClipboardCopy
+    case internalClipboardPaste
+    case internalClipboardClear
+    case internalClipboardSearch
+    case internalTimerStart
+    case internalTimerStop
+    case internalTimerReset
+    case internalTimerSetDuration
+    case internalScreenshotView
+    case internalScreenshotSearch
+    case internalScreenshotAnalyze
+    case internalSettingChange
+    case internalWindowShow
+    case internalWindowHide
 }
 
 struct ActivityEvent: Identifiable, Codable {
@@ -160,6 +186,58 @@ struct AppSession: Identifiable, Codable {
     }
 }
 
+// MARK: - Live Activity Models
+struct LiveActivitySession: Identifiable {
+    let id: String
+    let appName: String
+    let windowTitle: String?
+    let startTime: Date
+    var duration: TimeInterval {
+        Date().timeIntervalSince(startTime)
+    }
+    
+    init(id: String = UUID().uuidString, appName: String, windowTitle: String? = nil, startTime: Date = Date()) {
+        self.id = id
+        self.appName = appName
+        self.windowTitle = windowTitle
+        self.startTime = startTime
+    }
+}
+
+struct MeaningfulSession: Identifiable {
+    let id: String
+    let appName: String
+    let windowTitle: String?
+    let startTime: Date
+    let endTime: Date
+    let duration: TimeInterval
+    
+    init(id: String = UUID().uuidString, appName: String, windowTitle: String? = nil, startTime: Date, endTime: Date) {
+        self.id = id
+        self.appName = appName
+        self.windowTitle = windowTitle
+        self.startTime = startTime
+        self.endTime = endTime
+        self.duration = endTime.timeIntervalSince(startTime)
+    }
+}
+
+struct DistractedPeriod: Identifiable {
+    let id: String
+    let startTime: Date
+    let endTime: Date
+    let duration: TimeInterval
+    let switchCount: Int
+    
+    init(id: String = UUID().uuidString, startTime: Date, endTime: Date, switchCount: Int) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.duration = endTime.timeIntervalSince(startTime)
+        self.switchCount = switchCount
+    }
+}
+
 struct ActivityStats: Codable {
     let totalEvents: Int
     let totalActiveTime: TimeInterval
@@ -186,6 +264,76 @@ enum TimeRange: String, CaseIterable {
         case .last7Days: return "7 Days"
         case .last30Days: return "30 Days"
         }
+    }
+}
+
+// MARK: - Category Summary Models
+struct CategorySummary: Identifiable {
+    let id: String
+    let category: String
+    let count: Int
+    let duration: TimeInterval?
+    let percentage: Double
+    let icon: String
+    let color: Color
+    
+    init(id: String = UUID().uuidString, category: String, count: Int, duration: TimeInterval? = nil, percentage: Double, icon: String, color: Color = .brutalistAccent) {
+        self.id = id
+        self.category = category
+        self.count = count
+        self.duration = duration
+        self.percentage = percentage
+        self.icon = icon
+        self.color = color
+    }
+}
+
+struct TimePeriodSummary: Identifiable {
+    let id: String
+    let period: String
+    let startTime: Date
+    let endTime: Date
+    let appSummaries: [CategorySummary]
+    let eventTypeSummaries: [CategorySummary]
+    let totalEvents: Int
+    
+    init(id: String = UUID().uuidString, period: String, startTime: Date, endTime: Date, appSummaries: [CategorySummary], eventTypeSummaries: [CategorySummary], totalEvents: Int) {
+        self.id = id
+        self.period = period
+        self.startTime = startTime
+        self.endTime = endTime
+        self.appSummaries = appSummaries
+        self.eventTypeSummaries = eventTypeSummaries
+        self.totalEvents = totalEvents
+    }
+}
+
+// MARK: - Chart Data Models
+struct ChartDataPoint: Identifiable {
+    let id: String
+    let time: Date
+    let value: Double
+    let category: String
+    
+    init(id: String = UUID().uuidString, time: Date, value: Double, category: String) {
+        self.id = id
+        self.time = time
+        self.value = value
+        self.category = category
+    }
+}
+
+struct ChartSeries: Identifiable {
+    let id: String
+    let category: String
+    let color: Color
+    let dataPoints: [ChartDataPoint]
+    
+    init(id: String = UUID().uuidString, category: String, color: Color, dataPoints: [ChartDataPoint]) {
+        self.id = id
+        self.category = category
+        self.color = color
+        self.dataPoints = dataPoints
     }
 }
 

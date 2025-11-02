@@ -39,6 +39,31 @@ struct ActivityLogger {
         case .screenSleep: return "🌙"
         case .screenWake: return "🌅"
         case .heartbeat: return "❤️"
+        case .internalTabSwitch: return "📑"
+        case .internalSettingsOpen: return "⚙️"
+        case .internalSettingsClose: return "⚙️"
+        case .internalFeatureOpen: return "→"
+        case .internalFeatureClose: return "←"
+        case .internalNoteCreate: return "📝"
+        case .internalNoteEdit: return "✏️"
+        case .internalNoteDelete: return "🗑️"
+        case .internalNoteView: return "👁️"
+        case .internalNoteSearch: return "🔍"
+        case .internalScratchpadEdit: return "📄"
+        case .internalClipboardCopy: return "📋"
+        case .internalClipboardPaste: return "📌"
+        case .internalClipboardClear: return "🧹"
+        case .internalClipboardSearch: return "🔍"
+        case .internalTimerStart: return "▶️"
+        case .internalTimerStop: return "⏸️"
+        case .internalTimerReset: return "⏹️"
+        case .internalTimerSetDuration: return "⏱️"
+        case .internalScreenshotView: return "🖼️"
+        case .internalScreenshotSearch: return "🔍"
+        case .internalScreenshotAnalyze: return "🤖"
+        case .internalSettingChange: return "⚙️"
+        case .internalWindowShow: return "👁️"
+        case .internalWindowHide: return "👁️‍🗨️"
         }
     }
     
@@ -71,7 +96,7 @@ struct ActivityLogger {
         let time = timeString()
         let prefix = color(level)
         let suffix = reset()
-        print("\(prefix)[\(time)]\(suffix) \(message)")
+        print("\(prefix)[\(time)]\(suffix) \(message)\n")
     }
     
     // Event logging with compact format
@@ -85,7 +110,7 @@ struct ActivityLogger {
         let window = event.windowTitle.map { " \"\(truncate($0, maxLength: 30))\"" } ?? ""
         
         // Compact format: [time] symbol app window
-        print("\(color(.event))[\(time)]\(reset()) \(symbol) \(app)\(window)")
+        print("\(color(.event))[\(time)]\(reset()) \(symbol) \(app)\(window)\n")
     }
     
     // Helper to truncate strings
@@ -100,41 +125,41 @@ struct ActivityLogger {
     func logFlush(count: Int, success: Bool) {
         guard enabled else { return }
         if success {
-            print("\(color(.info))[\(timeString())]\(reset()) 💾 +\(count)")
+            print("\(color(.info))[\(timeString())]\(reset()) 💾 +\(count)\n")
         } else {
-            print("\(color(.error))[\(timeString())]\(reset()) 💾 ✗ \(count)")
+            print("\(color(.error))[\(timeString())]\(reset()) 💾 ✗ \(count)\n")
         }
     }
     
     // Status logging
     func logStatus(_ status: String, symbol: String = "ℹ️") {
         guard enabled else { return }
-        print("\(color(.info))[\(timeString())]\(reset()) \(symbol) \(status)")
+        print("\(color(.info))[\(timeString())]\(reset()) \(symbol) \(status)\n")
     }
     
     // Warning logging
     func logWarning(_ message: String) {
         guard enabled else { return }
-        print("\(color(.warning))[\(timeString())]\(reset()) ⚠️  \(message)")
+        print("\(color(.warning))[\(timeString())]\(reset()) ⚠️  \(message)\n")
     }
     
     // Error logging
     func logError(_ message: String) {
         guard enabled else { return }
-        print("\(color(.error))[\(timeString())]\(reset()) ✗ \(message)")
+        print("\(color(.error))[\(timeString())]\(reset()) ✗ \(message)\n")
     }
     
     // Skip/duplicate logging (very compact)
     func logSkip(_ reason: String, eventType: ActivityEventType? = nil) {
         guard enabled else { return }
         let sym = eventType.map { symbol(for: $0) } ?? "⊘"
-        print("\(color(.debug))[\(timeString())]\(reset()) \(sym) ⊘ \(reason)")
+        print("\(color(.debug))[\(timeString())]\(reset()) \(sym) ⊘ \(reason)\n")
     }
     
     // Stats logging
     func logStats(_ stats: String) {
         guard enabled else { return }
-        print("\(color(.info))[\(timeString())]\(reset()) 📊 \(stats)")
+        print("\(color(.info))[\(timeString())]\(reset()) 📊 \(stats)\n")
     }
 }
 

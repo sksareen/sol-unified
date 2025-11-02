@@ -48,6 +48,7 @@ class TimerStore: ObservableObject {
             
             // Set isRunning after timer is successfully created
             self.isRunning = true
+            InternalAppTracker.shared.trackTimerStart(duration: self.totalDuration)
         }
     }
     
@@ -55,12 +56,14 @@ class TimerStore: ObservableObject {
         timer?.invalidate()
         timer = nil
         isRunning = false
+        InternalAppTracker.shared.trackTimerStop()
     }
     
     func resetTimer() {
         stopTimer()
         timeRemaining = selectedDuration
         totalDuration = 0
+        InternalAppTracker.shared.trackTimerReset()
     }
     
     func setDuration(_ duration: TimeInterval) {
@@ -68,6 +71,7 @@ class TimerStore: ObservableObject {
         selectedDuration = duration
         timeRemaining = duration
         totalDuration = duration
+        InternalAppTracker.shared.trackTimerSetDuration(duration: duration)
     }
     
     private func tick() {

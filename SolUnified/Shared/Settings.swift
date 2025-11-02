@@ -13,19 +13,31 @@ class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
     @Published var windowWidth: CGFloat {
-        didSet { UserDefaults.standard.set(windowWidth, forKey: "windowWidth") }
+        didSet {
+            UserDefaults.standard.set(windowWidth, forKey: "windowWidth")
+            InternalAppTracker.shared.trackSettingChange(key: "windowWidth", value: "\(Int(windowWidth))")
+        }
     }
     
     @Published var windowHeight: CGFloat {
-        didSet { UserDefaults.standard.set(windowHeight, forKey: "windowHeight") }
+        didSet {
+            UserDefaults.standard.set(windowHeight, forKey: "windowHeight")
+            InternalAppTracker.shared.trackSettingChange(key: "windowHeight", value: "\(Int(windowHeight))")
+        }
     }
     
     @Published var isDarkMode: Bool {
-        didSet { UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode") }
+        didSet {
+            UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
+            InternalAppTracker.shared.trackSettingChange(key: "isDarkMode", value: isDarkMode ? "true" : "false")
+        }
     }
     
     @Published var screenshotsDirectory: String {
-        didSet { UserDefaults.standard.set(screenshotsDirectory, forKey: "screenshotsDirectory") }
+        didSet {
+            UserDefaults.standard.set(screenshotsDirectory, forKey: "screenshotsDirectory")
+            InternalAppTracker.shared.trackSettingChange(key: "screenshotsDirectory", value: screenshotsDirectory)
+        }
     }
     
     @Published var activityLoggingEnabled: Bool {
@@ -43,12 +55,16 @@ class AppSettings: ObservableObject {
     }
     
     @Published var activityLogRetentionDays: Int {
-        didSet { UserDefaults.standard.set(activityLogRetentionDays, forKey: "activityLogRetentionDays") }
+        didSet {
+            UserDefaults.standard.set(activityLogRetentionDays, forKey: "activityLogRetentionDays")
+            InternalAppTracker.shared.trackSettingChange(key: "activityLogRetentionDays", value: "\(activityLogRetentionDays)")
+        }
     }
     
     @Published var keyboardTrackingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(keyboardTrackingEnabled, forKey: "keyboardTrackingEnabled")
+            InternalAppTracker.shared.trackSettingChange(key: "keyboardTrackingEnabled", value: keyboardTrackingEnabled ? "true" : "false")
             if !keyboardTrackingEnabled {
                 InputMonitor.shared.stopMonitoring()
             } else if activityLoggingEnabled {
@@ -60,6 +76,7 @@ class AppSettings: ObservableObject {
     @Published var mouseTrackingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(mouseTrackingEnabled, forKey: "mouseTrackingEnabled")
+            InternalAppTracker.shared.trackSettingChange(key: "mouseTrackingEnabled", value: mouseTrackingEnabled ? "true" : "false")
             if !mouseTrackingEnabled {
                 InputMonitor.shared.stopMouseTracking()
             } else if activityLoggingEnabled {

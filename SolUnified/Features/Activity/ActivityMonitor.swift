@@ -245,6 +245,12 @@ class ActivityMonitor {
             return nil
         }
         
+        // Skip tracking Sol Unified's own window
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+           frontmostApp.bundleIdentifier == Bundle.main.bundleIdentifier {
+            return nil
+        }
+        
         let systemWideElement = AXUIElementCreateSystemWide()
         var focusedApp: AnyObject?
         

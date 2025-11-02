@@ -2,7 +2,7 @@
 //  ActivityView.swift
 //  SolUnified
 //
-//  Activity logging UI with stats, events, and filters
+//  Activity logging UI with category summaries and time period breakdowns
 //
 
 import SwiftUI
@@ -11,46 +11,23 @@ import AppKit
 struct ActivityView: View {
     @ObservedObject var store = ActivityStore.shared
     @ObservedObject var settings = AppSettings.shared
-    @State private var selectedEventType: ActivityEventType?
-    @State private var selectedApp: String?
     @State private var showingClearConfirm = false
     @State private var selectedTimeRange: DateInterval?
     @State private var timelineRange: TimeRange = .today
     @State private var timelineBuckets: [TimelineBucket] = []
-    
-    var filteredEvents: [ActivityEvent] {
-        var events = store.events
-        
-        // Filter by selected time range from timeline
-        if let timeRange = selectedTimeRange {
-            events = events.filter { event in
-                timeRange.contains(event.timestamp)
-            }
-        }
-        
-        if let eventType = selectedEventType {
-            events = events.filter { $0.eventType == eventType }
-        }
-        
-        if let appBundleId = selectedApp {
-            events = events.filter { $0.appBundleId == appBundleId }
-        }
-        
-        return events
-    }
+    @State private var selectedCategory: String?
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with Status
+            // Header
             VStack(spacing: Spacing.md) {
                 HStack {
                     HStack(spacing: Spacing.sm) {
-                        // Status indicator
                         Circle()
                             .fill(statusColor)
                             .frame(width: 8, height: 8)
                         
-                        Text("ACTIVITY LOG")
+                        Text("ACTIVITY SUMMARY")
                             .font(.system(size: Typography.headingSize, weight: .semibold))
                             .foregroundColor(Color.brutalistTextPrimary)
                     }
@@ -59,7 +36,7 @@ struct ActivityView: View {
                     
                     if store.isMonitoringActive {
                         VStack(alignment: .trailing, spacing: Spacing.xs) {
-                            Text("\(store.eventsTodayCount) events today")
+                            Text("\(store.eventsTodayCount) events")
                                 .font(.system(size: Typography.smallSize))
                                 .foregroundColor(Color.brutalistTextSecondary)
                             
@@ -72,15 +49,6 @@ struct ActivityView: View {
                     }
                     
                     Button(action: {
-                        store.loadRecentEvents(limit: 100)
-                        store.calculateStatsAsync()
-                    }) {
-                        Text("REFRESH")
-                            .font(.system(size: Typography.bodySize, weight: .medium))
-                    }
-                    .buttonStyle(BrutalistSecondaryButtonStyle())
-                    
-                    Button(action: {
                         showingClearConfirm = true
                     }) {
                         Text("CLEAR")
@@ -88,6 +56,21 @@ struct ActivityView: View {
                     }
                     .buttonStyle(BrutalistSecondaryButtonStyle())
                 }
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { value in
+                            // Only drag if not clicking on buttons (using simultaneousGesture so buttons still work)
+                            if let window = NSApplication.shared.keyWindow {
+                                let currentLocation = window.frame.origin
+                                // Note: SwiftUI Y is flipped, so subtract for Y
+                                let newLocation = NSPoint(
+                                    x: currentLocation.x + value.translation.width,
+                                    y: currentLocation.y - value.translation.height
+                                )
+                                window.setFrameOrigin(newLocation)
+                            }
+                        }
+                )
                 
                 // Quick Stats
                 if let stats = store.stats {
@@ -95,6 +78,11 @@ struct ActivityView: View {
                         ActivityStatCard(
                             title: "Active Time",
                             value: formatDuration(stats.totalActiveTime)
+                        )
+                        
+                        ActivityStatCard(
+                            title: "Top App",
+                            value: stats.topApps.first?.appName ?? "—"
                         )
                         
                         ActivityStatCard(
@@ -108,24 +96,6 @@ struct ActivityView: View {
                         )
                     }
                 }
-                
-                // Filters
-                HStack(spacing: Spacing.md) {
-                    Text("FILTERS:")
-                        .font(.system(size: Typography.smallSize, weight: .semibold))
-                        .foregroundColor(Color.brutalistTextSecondary)
-                    
-                    Picker("Event Type", selection: $selectedEventType) {
-                        Text("All Events").tag(nil as ActivityEventType?)
-                        ForEach([ActivityEventType.appActivate, .appLaunch, .appTerminate, .windowTitleChange, .windowClosed, .keyPress, .mouseClick, .mouseMove, .mouseScroll, .idleStart, .idleEnd], id: \.self) { type in
-                            Text(typeLabel(type)).tag(type as ActivityEventType?)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(maxWidth: 150)
-                    
-                    Spacer()
-                }
             }
             .padding(Spacing.lg)
             .background(Color.brutalistBgSecondary)
@@ -136,7 +106,7 @@ struct ActivityView: View {
                 alignment: .bottom
             )
             
-            // Timeline
+            // Timeline (compact)
             if settings.activityLoggingEnabled && !timelineBuckets.isEmpty {
                 ActivityTimelineView(
                     selectedTimeRange: $selectedTimeRange,
@@ -144,13 +114,20 @@ struct ActivityView: View {
                     timeRange: $timelineRange
                 )
                 .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.md)
-                .background(Color.brutalistBgPrimary)
+                .padding(.top, Spacing.xs)
+                .padding(.bottom, Spacing.xs)
+            }
+            
+            // Live Activity Stream (always shown when activity logging is enabled)
+            if settings.activityLoggingEnabled {
+                LiveActivityStreamView()
+                    .frame(height: 250)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.xs)
             }
             
             // Content
             if !settings.activityLoggingEnabled {
-                // Not enabled
                 VStack(spacing: Spacing.lg) {
                     Text("Activity Logging Disabled")
                         .font(.system(size: Typography.headingSize))
@@ -172,21 +149,15 @@ struct ActivityView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(Spacing.xl)
-            } else if filteredEvents.isEmpty {
-                // Empty state
+            } else if store.categorySummaries.isEmpty {
                 VStack(spacing: Spacing.lg) {
-                    Text("No Activity Events")
+                    Text("No Activity Data")
                         .font(.system(size: Typography.headingSize))
                         .foregroundColor(Color.brutalistTextMuted)
                     
-                    Text("Activity logging is enabled. Events will appear here as you use your Mac.")
+                    Text("Activity summaries will appear here as you use your Mac.")
                         .font(.system(size: Typography.bodySize))
                         .foregroundColor(Color.brutalistTextSecondary)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("Switch apps, open windows, and activity will be tracked.")
-                        .font(.system(size: Typography.smallSize))
-                        .foregroundColor(Color.brutalistTextMuted)
                         .multilineTextAlignment(.center)
                     
                     Button(action: {
@@ -201,24 +172,55 @@ struct ActivityView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(Spacing.xl)
             } else {
-                // Event list
                 ScrollView {
-                    LazyVStack(spacing: Spacing.md) {
-                        ForEach(groupedEvents) { group in
-                            VStack(alignment: .leading, spacing: Spacing.sm) {
-                                Text(group.title)
-                                    .font(.system(size: Typography.smallSize, weight: .semibold))
+                    VStack(spacing: Spacing.lg) {
+                        // Category Chart (Stacked Area)
+                        VStack(alignment: .leading, spacing: Spacing.md) {
+                            Text("CATEGORIES OVER TIME")
+                                .font(.system(size: Typography.smallSize, weight: .semibold))
+                                .foregroundColor(Color.brutalistTextMuted)
+                                .padding(.horizontal, Spacing.lg)
+                            
+                            if store.categoryChartSeries.isEmpty {
+                                Text("No category data available")
+                                    .font(.system(size: Typography.bodySize))
                                     .foregroundColor(Color.brutalistTextMuted)
-                                    .padding(.horizontal, Spacing.md)
-                                    .padding(.top, Spacing.sm)
-                                
-                                ForEach(group.events) { event in
-                                    ActivityEventCard(event: event)
-                                }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, Spacing.xl)
+                                    .padding(.horizontal, Spacing.lg)
+                            } else {
+                                ImprovedStackedAreaChartView(series: store.categoryChartSeries, height: 200)
+                                    .padding(.horizontal, Spacing.lg)
+                                    .padding(.vertical, Spacing.md)
+                                    .background(Color.brutalistBgSecondary)
+                                    .cornerRadius(BorderRadius.sm)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: BorderRadius.sm)
+                                            .stroke(Color.brutalistBorder, lineWidth: 1)
+                                    )
                             }
                         }
+                        .padding(.top, Spacing.lg)
+                        
+                        // Time Period Summaries
+                        if !store.timePeriodSummaries.isEmpty {
+                            VStack(alignment: .leading, spacing: Spacing.md) {
+                                Text("HOURLY BREAKDOWN")
+                                    .font(.system(size: Typography.smallSize, weight: .semibold))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                                    .padding(.horizontal, Spacing.lg)
+                                
+                                LazyVStack(spacing: Spacing.md) {
+                                    ForEach(store.timePeriodSummaries.prefix(12)) { period in
+                                        TimePeriodSummaryCard(period: period)
+                                    }
+                                }
+                                .padding(.horizontal, Spacing.lg)
+                            }
+                            .padding(.top, Spacing.lg)
+                        }
                     }
-                    .padding(Spacing.lg)
+                    .padding(.bottom, Spacing.lg)
                 }
             }
             
@@ -266,10 +268,9 @@ struct ActivityView: View {
         }
         .onChange(of: timelineRange) { _ in
             loadTimelineBuckets()
-            selectedTimeRange = nil // Clear selection when changing range
+            selectedTimeRange = nil
         }
         .onChange(of: store.events.count) { _ in
-            // Refresh timeline when new events arrive
             loadTimelineBuckets()
         }
     }
@@ -297,45 +298,9 @@ struct ActivityView: View {
         }
     }
     
-    private var groupedEvents: [EventGroup] {
-        let calendar = Calendar.current
-        var groups: [EventGroup] = []
-        var currentGroup: EventGroup?
-        
-        for event in filteredEvents {
-            let date = event.timestamp
-            let groupTitle: String
-            
-            if calendar.isDateInToday(date) {
-                groupTitle = "Today"
-            } else if calendar.isDateInYesterday(date) {
-                groupTitle = "Yesterday"
-            } else {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                groupTitle = formatter.string(from: date)
-            }
-            
-            if let existing = currentGroup, existing.title == groupTitle {
-                currentGroup?.events.append(event)
-            } else {
-                if let existing = currentGroup {
-                    groups.append(existing)
-                }
-                currentGroup = EventGroup(title: groupTitle, events: [event])
-            }
-        }
-        
-        if let last = currentGroup {
-            groups.append(last)
-        }
-        
-        return groups
-    }
-    
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
         
         if hours > 0 {
             return "\(hours)h \(minutes)m"
@@ -349,32 +314,167 @@ struct ActivityView: View {
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: Date())
     }
+}
+
+// MARK: - Category Summary Card
+
+struct CategorySummaryCard: View {
+    let summary: CategorySummary
     
-    private func typeLabel(_ type: ActivityEventType) -> String {
-        switch type {
-        case .appLaunch: return "App Launch"
-        case .appTerminate: return "App Terminate"
-        case .appActivate: return "App Switch"
-        case .windowTitleChange: return "Window Change"
-        case .windowClosed: return "Window Closed"
-        case .keyPress: return "Keyboard"
-        case .mouseClick: return "Mouse Click"
-        case .mouseMove: return "Mouse Move"
-        case .mouseScroll: return "Mouse Scroll"
-        case .idleStart: return "Idle Start"
-        case .idleEnd: return "Idle End"
-        case .screenSleep: return "Screen Sleep"
-        case .screenWake: return "Screen Wake"
-        case .heartbeat: return "Heartbeat"
+    var body: some View {
+        HStack(spacing: Spacing.md) {
+            Image(systemName: summary.icon)
+                .foregroundColor(summary.color)
+                .frame(width: 24, height: 24)
+            
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(summary.category)
+                    .font(.system(size: Typography.bodySize, weight: .medium))
+                    .foregroundColor(Color.brutalistTextPrimary)
+                
+                HStack(spacing: Spacing.sm) {
+                    if let duration = summary.duration {
+                        Text(formatDuration(duration))
+                            .font(.system(size: Typography.smallSize))
+                            .foregroundColor(Color.brutalistTextSecondary)
+                    }
+                    
+                    Text("\(summary.count) events")
+                        .font(.system(size: Typography.smallSize))
+                        .foregroundColor(Color.brutalistTextMuted)
+                    
+                    Text("•")
+                        .foregroundColor(Color.brutalistTextMuted)
+                    
+                    Text("\(Int(summary.percentage))%")
+                        .font(.system(size: Typography.smallSize))
+                        .foregroundColor(Color.brutalistTextMuted)
+                }
+            }
+            
+            Spacer()
+            
+            // Percentage bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.brutalistBgSecondary)
+                        .frame(height: 4)
+                    
+                    Rectangle()
+                        .fill(summary.color)
+                        .frame(width: geometry.size.width * CGFloat(summary.percentage / 100), height: 4)
+                }
+            }
+            .frame(width: 80, height: 4)
+        }
+        .padding(Spacing.md)
+        .background(Color.brutalistBgSecondary)
+        .cornerRadius(BorderRadius.sm)
+        .overlay(
+            RoundedRectangle(cornerRadius: BorderRadius.sm)
+                .stroke(Color.brutalistBorder, lineWidth: 1)
+        )
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
         }
     }
 }
 
-struct EventGroup: Identifiable {
-    let id = UUID()
-    let title: String
-    var events: [ActivityEvent]
+// MARK: - Time Period Summary Card
+
+struct TimePeriodSummaryCard: View {
+    let period: TimePeriodSummary
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack {
+                Text(period.period)
+                    .font(.system(size: Typography.bodySize, weight: .semibold))
+                    .foregroundColor(Color.brutalistTextPrimary)
+                
+                Spacer()
+                
+                Text("\(period.totalEvents) events")
+                    .font(.system(size: Typography.smallSize))
+                    .foregroundColor(Color.brutalistTextMuted)
+            }
+            
+            if !period.appSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Top Apps:")
+                        .font(.system(size: Typography.smallSize, weight: .medium))
+                        .foregroundColor(Color.brutalistTextSecondary)
+                    
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(period.appSummaries.prefix(3)) { app in
+                            HStack(spacing: 4) {
+                                Text(app.category)
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextSecondary)
+                                
+                                Text("\(Int(app.percentage))%")
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                            }
+                            .padding(.horizontal, Spacing.xs)
+                            .padding(.vertical, 2)
+                            .background(Color.brutalistBgSecondary)
+                            .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+            
+            if !period.eventTypeSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Event Types:")
+                        .font(.system(size: Typography.smallSize, weight: .medium))
+                        .foregroundColor(Color.brutalistTextSecondary)
+                    
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(period.eventTypeSummaries.prefix(3)) { eventType in
+                            HStack(spacing: 4) {
+                                Image(systemName: eventType.icon)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(eventType.color)
+                                
+                                Text(eventType.category)
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextSecondary)
+                                
+                                Text("\(Int(eventType.percentage))%")
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                            }
+                            .padding(.horizontal, Spacing.xs)
+                            .padding(.vertical, 2)
+                            .background(Color.brutalistBgSecondary)
+                            .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(Spacing.md)
+        .background(Color.brutalistBgSecondary)
+        .cornerRadius(BorderRadius.sm)
+        .overlay(
+            RoundedRectangle(cornerRadius: BorderRadius.sm)
+                .stroke(Color.brutalistBorder, lineWidth: 1)
+        )
+    }
 }
+
+// MARK: - Stat Card
 
 struct ActivityStatCard: View {
     let title: String
@@ -387,158 +487,16 @@ struct ActivityStatCard: View {
                 .foregroundColor(Color.brutalistTextMuted)
             
             Text(value)
-                .font(.system(size: Typography.bodySize, weight: .semibold))
+                .font(.system(size: Typography.headingSize, weight: .semibold))
                 .foregroundColor(Color.brutalistTextPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.md)
-        .background(Color.brutalistBgTertiary)
-        .cornerRadius(BorderRadius.sm)
-    }
-}
-
-struct ActivityEventCard: View {
-    let event: ActivityEvent
-    
-    var body: some View {
-        HStack(spacing: Spacing.md) {
-            // Event type icon
-            Image(systemName: iconName)
-                .font(.system(size: 16))
-                .foregroundColor(iconColor)
-                .frame(width: 24)
-            
-            // Event details
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(eventDescription)
-                    .font(.system(size: Typography.bodySize))
-                    .foregroundColor(Color.brutalistTextPrimary)
-                
-                if let windowTitle = event.windowTitle {
-                    Text(windowTitle)
-                        .font(.system(size: Typography.smallSize))
-                        .foregroundColor(Color.brutalistTextMuted)
-                        .lineLimit(1)
-                }
-                
-                HStack {
-                    Text(eventTypeLabel)
-                        .font(.system(size: Typography.smallSize, weight: .medium))
-                        .foregroundColor(Color.brutalistTextMuted)
-                    
-                    Text("•")
-                        .foregroundColor(Color.brutalistTextMuted)
-                    
-                    Text(formatTime(event.timestamp))
-                        .font(.system(size: Typography.smallSize))
-                        .foregroundColor(Color.brutalistTextMuted)
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(Spacing.md)
-        .background(Color.brutalistBgSecondary)
+        .background(Color.brutalistBgPrimary)
         .cornerRadius(BorderRadius.sm)
         .overlay(
             RoundedRectangle(cornerRadius: BorderRadius.sm)
                 .stroke(Color.brutalistBorder, lineWidth: 1)
         )
     }
-    
-    private var iconName: String {
-        switch event.eventType {
-        case .appLaunch: return "arrow.up.circle.fill"
-        case .appTerminate: return "xmark.circle.fill"
-        case .appActivate: return "app.badge.fill"
-        case .windowTitleChange: return "square.stack.3d.up.fill"
-        case .windowClosed: return "xmark.square.fill"
-        case .keyPress: return "keyboard.fill"
-        case .mouseClick: return "cursorarrow.click"
-        case .mouseMove: return "cursorarrow.move"
-        case .mouseScroll: return "arrow.up.and.down"
-        case .idleStart: return "moon.fill"
-        case .idleEnd: return "sun.max.fill"
-        case .screenSleep: return "moon.zzz.fill"
-        case .screenWake: return "sunrise.fill"
-        case .heartbeat: return "heart.fill"
-        }
-    }
-    
-    private var iconColor: Color {
-        switch event.eventType {
-        case .appLaunch, .appActivate, .screenWake, .idleEnd:
-            return Color.brutalistAccent
-        case .appTerminate, .windowClosed, .screenSleep, .idleStart:
-            return Color.brutalistTextMuted
-        case .windowTitleChange, .keyPress, .mouseClick, .mouseMove, .mouseScroll, .heartbeat:
-            return Color.brutalistTextSecondary
-        }
-    }
-    
-    private var eventDescription: String {
-        if let appName = event.appName {
-            switch event.eventType {
-            case .appLaunch: return "\(appName) launched"
-            case .appTerminate: return "\(appName) terminated"
-            case .appActivate: return "Switched to \(appName)"
-            case .windowTitleChange: return "Window changed in \(appName)"
-            case .windowClosed:
-                if let windowTitle = event.windowTitle {
-                    return "Window closed: \(windowTitle)"
-                }
-                return "Window closed in \(appName)"
-            case .keyPress:
-                if let eventData = event.eventData,
-                   let data = eventData.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let keyCount = json["keyCount"] as? String {
-                    return "\(keyCount) keystrokes in \(appName)"
-                }
-                return "Keystrokes in \(appName)"
-            case .mouseClick:
-                if let eventData = event.eventData,
-                   let _ = eventData.data(using: .utf8),
-                   let _ = try? JSONSerialization.jsonObject(with: eventData.data(using: .utf8)!, options: []) as? [String: Any] {
-                    return "Mouse click in \(appName)"
-                }
-                return "Mouse click in \(appName)"
-            case .mouseMove: return "Mouse moved in \(appName)"
-            case .mouseScroll: return "Mouse scroll in \(appName)"
-            case .idleStart: return "User idle"
-            case .idleEnd: return "User active"
-            case .screenSleep: return "Screen slept"
-            case .screenWake: return "Screen woke"
-            case .heartbeat: return "Heartbeat"
-            }
-        } else {
-            return eventTypeLabel
-        }
-    }
-    
-    private var eventTypeLabel: String {
-        switch event.eventType {
-        case .appLaunch: return "Launch"
-        case .appTerminate: return "Terminate"
-        case .appActivate: return "Switch"
-        case .windowTitleChange: return "Window"
-        case .windowClosed: return "Closed"
-        case .keyPress: return "Keyboard"
-        case .mouseClick: return "Click"
-        case .mouseMove: return "Move"
-        case .mouseScroll: return "Scroll"
-        case .idleStart: return "Idle"
-        case .idleEnd: return "Active"
-        case .screenSleep: return "Sleep"
-        case .screenWake: return "Wake"
-        case .heartbeat: return "Heartbeat"
-        }
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
 }
-

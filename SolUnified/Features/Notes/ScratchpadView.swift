@@ -11,6 +11,7 @@ struct ScratchpadView: View {
     @ObservedObject var store = NotesStore.shared
     @State private var content: String = ""
     @State private var saveTimer: Timer?
+    @State private var trackingTimer: Timer?
     @State private var lastSaved: Date?
     
     var body: some View {
@@ -49,6 +50,7 @@ struct ScratchpadView: View {
                     .scrollContentBackground(.hidden)
                     .onChange(of: content) { newValue in
                         scheduleAutoSave()
+                        scheduleTracking()
                     }
                 
                 if content.isEmpty {
@@ -72,6 +74,14 @@ struct ScratchpadView: View {
         saveTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
             store.saveGlobalNote(content: content)
             lastSaved = Date()
+        }
+    }
+    
+    private func scheduleTracking() {
+        // Debounce tracking: only log after user stops typing for 2 seconds
+        trackingTimer?.invalidate()
+        trackingTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+            InternalAppTracker.shared.trackScratchpadEdit()
         }
     }
     

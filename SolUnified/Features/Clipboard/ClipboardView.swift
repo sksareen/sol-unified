@@ -32,6 +32,7 @@ struct ClipboardView: View {
                     Spacer()
                     
                     Button(action: {
+                        InternalAppTracker.shared.trackClipboardClear()
                         _ = store.clearHistory()
                     }) {
                         Text("CLEAR ALL")
@@ -43,6 +44,11 @@ struct ClipboardView: View {
                 // Search bar
                 TextField("Search clipboard...", text: $searchQuery)
                     .textFieldStyle(BrutalistTextFieldStyle())
+                    .onChange(of: searchQuery) { newValue in
+                        if !newValue.isEmpty {
+                            InternalAppTracker.shared.trackClipboardSearch(query: newValue)
+                        }
+                    }
             }
             .padding(Spacing.lg)
             .background(Color.brutalistBgSecondary)
@@ -75,6 +81,8 @@ struct ClipboardView: View {
                             )
                             .onTapGesture {
                                 if store.copyToPasteboard(item) {
+                                    let preview = item.contentPreview ?? item.contentText ?? "Unknown"
+                                    InternalAppTracker.shared.trackClipboardPaste(preview: preview)
                                     copiedItemId = item.id
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                         copiedItemId = nil

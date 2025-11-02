@@ -34,6 +34,7 @@ struct NotesListView: View {
                     Button(action: {
                         editingNote = Note(title: "New Note", content: "")
                         showingNewNote = true
+                        InternalAppTracker.shared.trackNoteCreate(title: "New Note")
                     }) {
                         Text("+ NEW NOTE")
                             .font(.system(size: Typography.bodySize, weight: .medium))
@@ -44,6 +45,11 @@ struct NotesListView: View {
                 // Search bar
                 TextField("Search notes...", text: $searchQuery)
                     .textFieldStyle(BrutalistTextFieldStyle())
+                    .onChange(of: searchQuery) { newValue in
+                        if !newValue.isEmpty {
+                            InternalAppTracker.shared.trackNoteSearch(query: newValue)
+                        }
+                    }
             }
             .padding(Spacing.lg)
             .background(Color.brutalistBgSecondary)
@@ -74,9 +80,11 @@ struct NotesListView: View {
                                 .onTapGesture {
                                     editingNote = note
                                     showingNewNote = true
+                                    InternalAppTracker.shared.trackNoteView(id: note.id, title: note.title)
                                 }
                                 .contextMenu {
                                     Button("Delete") {
+                                        InternalAppTracker.shared.trackNoteDelete(id: note.id, title: note.title)
                                         _ = store.deleteNote(id: note.id)
                                     }
                                 }
@@ -157,6 +165,11 @@ struct NoteEditor: View {
                     var updatedNote = note
                     updatedNote.updatedAt = Date()
                     _ = store.saveNote(updatedNote)
+                    if note.id == 0 {
+                        InternalAppTracker.shared.trackNoteCreate(title: note.title)
+                    } else {
+                        InternalAppTracker.shared.trackNoteEdit(id: note.id, title: note.title)
+                    }
                     isPresented = false
                 }
                 .buttonStyle(BrutalistPrimaryButtonStyle())

@@ -8,7 +8,12 @@
 import SwiftUI
 
 struct TabNavigator: View {
-    @State private var selectedTab: AppTab = .notes
+    @State private var selectedTab: AppTab = .notes {
+        didSet {
+            // Track tab switch
+            InternalAppTracker.shared.trackTabSwitch(to: selectedTab)
+        }
+    }
     @ObservedObject var settings = AppSettings.shared
     @ObservedObject var timerStore = TimerStore.shared
     @FocusState private var tabFocused: Bool
@@ -93,8 +98,17 @@ struct TabNavigator: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.brutalistBgPrimary)
-        .sheet(isPresented: $settings.showSettings) {
+        .sheet(isPresented: $settings.showSettings, onDismiss: {
+            // Track settings close
+            InternalAppTracker.shared.trackSettingsClose()
+        }) {
             SettingsView()
+        }
+        .onChange(of: settings.showSettings) { isOpen in
+            if isOpen {
+                // Track settings open
+                InternalAppTracker.shared.trackSettingsOpen()
+            }
         }
         .onAppear {
             tabFocused = true
@@ -117,6 +131,7 @@ struct TabNavigator: View {
         case .activity:
             selectedTab = .notes
         }
+        // Tracking happens automatically via didSet
     }
 }
 

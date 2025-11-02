@@ -13,6 +13,7 @@ class Database {
     
     private var db: OpaquePointer?
     private let dbPath: String
+    private let dbQueue = DispatchQueue(label: "com.solunified.database", qos: .utility)
     
     private init() {
         let fileManager = FileManager.default
@@ -27,20 +28,33 @@ class Database {
     }
     
     func initialize() -> Bool {
-        if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("Error opening database")
-            return false
+        var result: Bool = false
+        dbQueue.sync {
+            if sqlite3_open(dbPath, &db) != SQLITE_OK {
+                print("Error opening database")
+                result = false
+                return
+            }
+            
+            // Enable WAL mode for better concurrent access and performance
+            if !executeSync("PRAGMA journal_mode=WAL;") {
+                print("Warning: Failed to enable WAL mode")
+            }
+            
+            result = createTablesSync()
         }
-        
-        // Enable WAL mode for better concurrent access and performance
-        if !execute("PRAGMA journal_mode=WAL;") {
-            print("Warning: Failed to enable WAL mode")
-        }
-        
-        return createTables()
+        return result
     }
     
     private func createTables() -> Bool {
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.createTablesSync()
+        }
+        return result
+    }
+    
+    private func createTablesSync() -> Bool {
         let tables = [
             """
             CREATE TABLE IF NOT EXISTS notes (
@@ -106,7 +120,7 @@ class Database {
         ]
         
         for sql in tables {
-            if !execute(sql) {
+            if !executeSync(sql) {
                 print("Failed to create table: \(sql)")
                 return false
             }
@@ -117,6 +131,14 @@ class Database {
     
     @discardableResult
     func execute(_ sql: String, parameters: [Any] = []) -> Bool {
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.executeSync(sql, parameters: parameters)
+        }
+        return result
+    }
+    
+    private func executeSync(_ sql: String, parameters: [Any] = []) -> Bool {
         var statement: OpaquePointer?
         
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
@@ -138,13 +160,21 @@ class Database {
             }
         }
         
-        let result = sqlite3_step(statement)
+        let stepResult = sqlite3_step(statement)
         sqlite3_finalize(statement)
         
-        return result == SQLITE_DONE || result == SQLITE_ROW
+        return stepResult == SQLITE_DONE || stepResult == SQLITE_ROW
     }
     
     func query(_ sql: String, parameters: [Any] = []) -> [[String: Any]] {
+        var results: [[String: Any]] = []
+        dbQueue.sync {
+            results = self.querySync(sql, parameters: parameters)
+        }
+        return results
+    }
+    
+    private func querySync(_ sql: String, parameters: [Any] = []) -> [[String: Any]] {
         var statement: OpaquePointer?
         var results: [[String: Any]] = []
         
@@ -198,7 +228,11 @@ class Database {
     }
     
     func lastInsertRowId() -> Int {
-        return Int(sqlite3_last_insert_rowid(db))
+        var rowId: Int = 0
+        dbQueue.sync {
+            rowId = Int(sqlite3_last_insert_rowid(db))
+        }
+        return rowId
     }
     
     // MARK: - Activity Log Methods
@@ -206,7 +240,15 @@ class Database {
     func insertActivityEvents(_ events: [ActivityEvent]) -> Bool {
         guard !events.isEmpty else { return true }
         
-        if !beginTransaction() {
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.insertActivityEventsSync(events)
+        }
+        return result
+    }
+    
+    private func insertActivityEventsSync(_ events: [ActivityEvent]) -> Bool {
+        if !beginTransactionSync() {
             print("Failed to begin transaction for activity events")
             return false
         }
@@ -269,12 +311,12 @@ class Database {
         }
         
         if success {
-            if !commitTransaction() {
+            if !commitTransactionSync() {
                 print("Failed to commit transaction for activity events")
                 success = false
             }
         } else {
-            _ = rollbackTransaction()
+            _ = rollbackTransactionSync()
         }
         
         return success
@@ -296,12 +338,24 @@ class Database {
         return execute("BEGIN TRANSACTION")
     }
     
+    private func beginTransactionSync() -> Bool {
+        return executeSync("BEGIN TRANSACTION")
+    }
+    
     private func commitTransaction() -> Bool {
         return execute("COMMIT")
     }
     
+    private func commitTransactionSync() -> Bool {
+        return executeSync("COMMIT")
+    }
+    
     private func rollbackTransaction() -> Bool {
         return execute("ROLLBACK")
+    }
+    
+    private func rollbackTransactionSync() -> Bool {
+        return executeSync("ROLLBACK")
     }
     
     deinit {

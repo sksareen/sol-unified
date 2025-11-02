@@ -19,15 +19,10 @@ class BorderlessWindow: NSWindow {
         self.backgroundColor = .clear
         self.level = .floating
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        self.isMovableByWindowBackground = true
+        self.isMovableByWindowBackground = false // Disable dragging from anywhere - we'll handle it in SwiftUI
         self.hasShadow = true
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
-    }
-    
-    override func mouseDown(with event: NSEvent) {
-        super.mouseDown(with: event)
-        // Allow normal mouse interaction
     }
 }
 
@@ -97,6 +92,7 @@ class WindowManager: NSObject, ObservableObject {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         isVisible = true
+        InternalAppTracker.shared.trackWindowShow()
     }
     
     func hideWindow(animated: Bool) {
@@ -122,6 +118,7 @@ class WindowManager: NSObject, ObservableObject {
         }
         
         isVisible = false
+        InternalAppTracker.shared.trackWindowHide()
     }
 }
 
