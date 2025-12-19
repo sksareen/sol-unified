@@ -925,7 +925,7 @@ class ActivityStore: ObservableObject {
         case .notes: return "Notes"
         case .clipboard: return "Clipboard"
         case .screenshots: return "Screenshots"
-        case .timer: return "Timer"
+        case .agents: return "Agents"
         case .activity: return "Activity"
         }
     }

@@ -75,7 +75,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Cleanup
         ClipboardMonitor.shared.stopMonitoring()
-        TimerStore.shared.stopTimer()
         ActivityStore.shared.stopMonitoring()
         hotkeyManager.unregister()
     }
