@@ -11,6 +11,7 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
     var windowManager: WindowManager?
     var hotkeyManager = HotkeyManager.shared
+    var memoryTracker = MemoryTracker.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (app is menu bar only with hotkey)
@@ -61,6 +62,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if AppSettings.shared.activityLoggingEnabled {
                 activityStore.startMonitoring()
             }
+            
+            // Start memory tracking for agent intelligence
+            print("🧠 Starting memory tracking for agent bridge")
+            self.memoryTracker.updateContextFile() // Initial update
             
             // Cleanup old activity logs based on retention setting
             let retentionDays = AppSettings.shared.activityLogRetentionDays

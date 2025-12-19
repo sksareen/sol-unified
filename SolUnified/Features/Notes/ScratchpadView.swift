@@ -19,19 +19,28 @@ struct ScratchpadView: View {
             // Header
             HStack {
                 Text("SCRATCHPAD")
-                    .font(.system(size: Typography.headingSize, weight: .semibold))
-                    .foregroundColor(Color.brutalistTextPrimary)
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(1)
+                    .foregroundColor(.secondary)
                 
                 Spacer()
                 
                 if let lastSaved = lastSaved {
-                    Text("• Saved \(timeAgo(lastSaved))")
-                        .font(.system(size: Typography.smallSize))
-                        .foregroundColor(Color.brutalistTextMuted)
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green.opacity(0.8))
+                            .frame(width: 4, height: 4)
+                        Text("SAVED \(timeAgo(lastSaved).uppercased())")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.secondary.opacity(0.6))
+                    }
                 }
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
@@ -42,11 +51,11 @@ struct ScratchpadView: View {
             // Content Area - Text Editor
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $content)
-                    .font(.system(size: Typography.bodySize, design: .monospaced))
-                    .lineSpacing(Typography.lineHeight * Typography.bodySize - Typography.bodySize)
-                    .foregroundColor(Color.brutalistTextPrimary)
-                    .padding(Spacing.lg)
-                    .background(Color.brutalistBgSecondary)
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .lineSpacing(6)
+                    .foregroundColor(.primary.opacity(0.9))
+                    .padding(20)
+                    .background(Color.brutalistBgPrimary)
                     .scrollContentBackground(.hidden)
                     .onChange(of: content) { newValue in
                         scheduleAutoSave()
@@ -54,16 +63,20 @@ struct ScratchpadView: View {
                     }
                 
                 if content.isEmpty {
-                    Text("Start typing...\n\nYour notes are auto-saved")
-                        .font(.system(size: Typography.bodySize))
-                        .foregroundColor(Color.brutalistTextMuted)
-                        .padding(Spacing.lg)
-                        .padding(.leading, 5)
-                        .allowsHitTesting(false)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Start typing...")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Your notes are auto-saved in real-time.")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.secondary.opacity(0.4))
+                    .padding(20)
+                    .padding(.top, 4)
+                    .allowsHitTesting(false)
                 }
             }
-            .background(Color.brutalistBgSecondary)
         }
+        .background(Color.brutalistBgPrimary)
         .onAppear {
             content = store.globalNote?.content ?? ""
         }

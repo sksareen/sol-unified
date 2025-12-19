@@ -23,11 +23,12 @@ struct ClipboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(spacing: Spacing.md) {
+            VStack(spacing: 12) {
                 HStack {
-                    Text("CLIPBOARD HISTORY")
-                        .font(.system(size: Typography.headingSize, weight: .semibold))
-                        .foregroundColor(Color.brutalistTextPrimary)
+                    Text("CLIPBOARD")
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(1)
+                        .foregroundColor(.secondary)
                     
                     Spacer()
                     
@@ -35,23 +36,41 @@ struct ClipboardView: View {
                         InternalAppTracker.shared.trackClipboardClear()
                         _ = store.clearHistory()
                     }) {
-                        Text("CLEAR ALL")
-                            .font(.system(size: Typography.bodySize, weight: .medium))
+                        Text("CLEAR")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.brutalistAccent)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.brutalistAccent.opacity(0.1))
+                            .cornerRadius(4)
                     }
-                    .buttonStyle(BrutalistSecondaryButtonStyle())
+                    .buttonStyle(PlainButtonStyle())
                 }
                 
                 // Search bar
-                TextField("Search clipboard...", text: $searchQuery)
-                    .textFieldStyle(BrutalistTextFieldStyle())
-                    .onChange(of: searchQuery) { newValue in
-                        if !newValue.isEmpty {
-                            InternalAppTracker.shared.trackClipboardSearch(query: newValue)
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    
+                    TextField("Search clipboard...", text: $searchQuery)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .font(.system(size: 13))
+                        .onChange(of: searchQuery) { newValue in
+                            if !newValue.isEmpty {
+                                InternalAppTracker.shared.trackClipboardSearch(query: newValue)
+                            }
                         }
-                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.brutalistBgTertiary)
+                .cornerRadius(6)
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
+            .padding(16)
+            .background(
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
@@ -61,19 +80,19 @@ struct ClipboardView: View {
             
             // Clipboard items
             if filteredItems.isEmpty {
-                VStack(spacing: Spacing.lg) {
-                    Text("No clipboard history")
-                        .font(.system(size: Typography.headingSize))
-                        .foregroundColor(Color.brutalistTextMuted)
-                    
-                    Text("Copy something to see it here")
-                        .font(.system(size: Typography.bodySize))
-                        .foregroundColor(Color.brutalistTextSecondary)
+                VStack(spacing: 16) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.2))
+                    Text("No history")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.brutalistBgPrimary)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: Spacing.md) {
+                    LazyVStack(spacing: 1) {
                         ForEach(filteredItems) { item in
                             ClipboardItemCard(
                                 item: item,
@@ -91,8 +110,8 @@ struct ClipboardView: View {
                             }
                         }
                     }
-                    .padding(Spacing.lg)
                 }
+                .background(Color.brutalistBgPrimary)
             }
         }
     }
@@ -101,65 +120,66 @@ struct ClipboardView: View {
 struct ClipboardItemCard: View {
     let item: ClipboardItem
     let isCopied: Bool
-    @State private var thumbnail: NSImage?
     
     var body: some View {
-        HStack(alignment: .top, spacing: Spacing.md) {
-            // Icon or Image Thumbnail
-            if item.contentType == .image, let path = item.filePath, let image = NSImage(contentsOfFile: path) {
-                // Show actual image thumbnail
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 60, height: 60)
-                    .clipped()
-                    .cornerRadius(BorderRadius.sm)
-            } else {
-                // Show icon for text/files
-                Image(systemName: iconName)
-                    .font(.system(size: 24))
-                    .foregroundColor(Color.brutalistAccent)
-                    .frame(width: 60, height: 60)
+        HStack(alignment: .center, spacing: 14) {
+            // Content Icon/Thumbnail
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.brutalistBgSecondary)
+                    .frame(width: 44, height: 44)
+                
+                if item.contentType == .image, let path = item.filePath, let image = NSImage(contentsOfFile: path) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 44, height: 44)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Image(systemName: iconName)
+                        .font(.system(size: 18))
+                        .foregroundColor(Color.brutalistAccent.opacity(0.7))
+                }
             }
             
-            // Content
-            VStack(alignment: .leading, spacing: Spacing.xs) {
+            VStack(alignment: .leading, spacing: 4) {
                 if let preview = item.contentPreview {
                     Text(preview)
-                        .font(.system(size: Typography.bodySize))
-                        .foregroundColor(Color.brutalistTextPrimary)
-                        .lineLimit(3)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary.opacity(0.9))
+                        .lineLimit(2)
                 }
                 
-                HStack {
+                HStack(spacing: 6) {
                     Text(item.contentType.rawValue.uppercased())
-                        .font(.system(size: Typography.smallSize, weight: .medium))
-                        .foregroundColor(Color.brutalistTextMuted)
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.secondary.opacity(0.6))
                     
                     Text("•")
-                        .foregroundColor(Color.brutalistTextMuted)
+                        .foregroundColor(.secondary.opacity(0.3))
                     
                     Text(formatDate(item.createdAt))
-                        .font(.system(size: Typography.smallSize))
-                        .foregroundColor(Color.brutalistTextMuted)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.6))
                 }
             }
             
             Spacer()
             
-            // Copy indicator
             if isCopied {
-                Text("COPIED")
-                    .font(.system(size: Typography.smallSize, weight: .semibold))
+                Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Color.brutalistAccent)
+                    .font(.system(size: 16))
             }
         }
-        .padding(Spacing.lg)
-        .background(isCopied ? Color.brutalistBgTertiary : Color.brutalistBgSecondary)
-        .cornerRadius(BorderRadius.md)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(isCopied ? Color.brutalistAccent.opacity(0.05) : Color.clear)
         .overlay(
-            RoundedRectangle(cornerRadius: BorderRadius.md)
-                .stroke(isCopied ? Color.brutalistAccent : Color.brutalistBorder, lineWidth: isCopied ? 2 : 1)
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.brutalistBorder.opacity(0.5)),
+            alignment: .bottom
         )
     }
     

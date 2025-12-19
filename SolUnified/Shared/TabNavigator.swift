@@ -21,7 +21,7 @@ struct TabNavigator: View {
         VStack(spacing: 0) {
             
             // Tab Bar
-            HStack(spacing: Spacing.md) {
+            HStack(spacing: 4) {
                 TabButton(title: "AGENTS", tab: .agents, selectedTab: $selectedTab)
                     .keyboardShortcut("1", modifiers: .command)
 
@@ -43,24 +43,27 @@ struct TabNavigator: View {
                 Button(action: {
                     settings.showSettings = true
                 }) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: Typography.bodySize))
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(Color.brutalistTextSecondary)
-                        .padding(Spacing.sm)
+                        .padding(8)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .help("Settings (Cmd+,)")
                 .keyboardShortcut(",", modifiers: .command)
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
-            .focused($tabFocused)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
                     .foregroundColor(Color.brutalistBorder),
                 alignment: .bottom
             )
+            .focused($tabFocused)
             
             // Content Area
             Group {
@@ -128,17 +131,25 @@ struct TabButton: View {
     
     var body: some View {
         Button(action: {
-            selectedTab = tab
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selectedTab = tab
+            }
         }) {
             Text(title)
-                .font(.system(size: Typography.bodySize, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                .tracking(0.5)
                 .foregroundColor(isSelected ? Color.brutalistTextPrimary : Color.brutalistTextSecondary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.sm)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(
-                    isSelected ? Color.brutalistBgTertiary : Color.clear
+                    ZStack {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.brutalistBgTertiary)
+                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                        }
+                    }
                 )
-                .cornerRadius(BorderRadius.sm)
         }
         .buttonStyle(PlainButtonStyle())
     }

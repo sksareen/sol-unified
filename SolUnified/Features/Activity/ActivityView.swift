@@ -20,85 +20,63 @@ struct ActivityView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(spacing: Spacing.md) {
+            VStack(spacing: 12) {
                 HStack {
-                    HStack(spacing: Spacing.sm) {
+                    HStack(spacing: 8) {
                         Circle()
                             .fill(statusColor)
                             .frame(width: 8, height: 8)
                         
-                        Text("ACTIVITY SUMMARY")
-                            .font(.system(size: Typography.headingSize, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
+                        Text("ACTIVITY")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(1)
+                            .foregroundColor(.secondary)
                     }
                     
                     Spacer()
                     
                     if store.isMonitoringActive {
-                        VStack(alignment: .trailing, spacing: Spacing.xs) {
-                            Text("\(store.eventsTodayCount) events")
-                                .font(.system(size: Typography.smallSize))
-                                .foregroundColor(Color.brutalistTextSecondary)
+                        HStack(spacing: 12) {
+                            Text("\(store.eventsTodayCount) EVENTS")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.secondary.opacity(0.6))
                             
-                            if let lastEvent = store.lastEventTime {
-                                Text("Last: \(formatTimeAgo(lastEvent))")
-                                    .font(.system(size: Typography.smallSize))
-                                    .foregroundColor(Color.brutalistTextMuted)
+                            Button(action: {
+                                showingClearConfirm = true
+                            }) {
+                                Text("CLEAR")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.red.opacity(0.8))
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
-                    
-                    Button(action: {
-                        showingClearConfirm = true
-                    }) {
-                        Text("CLEAR")
-                            .font(.system(size: Typography.bodySize, weight: .medium))
-                    }
-                    .buttonStyle(BrutalistSecondaryButtonStyle())
                 }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 5)
-                        .onChanged { value in
-                            // Only drag if not clicking on buttons (using simultaneousGesture so buttons still work)
-                            if let window = NSApplication.shared.keyWindow {
-                                let currentLocation = window.frame.origin
-                                // Note: SwiftUI Y is flipped, so subtract for Y
-                                let newLocation = NSPoint(
-                                    x: currentLocation.x + value.translation.width,
-                                    y: currentLocation.y - value.translation.height
-                                )
-                                window.setFrameOrigin(newLocation)
-                            }
-                        }
-                )
                 
                 // Quick Stats
                 if let stats = store.stats {
-                    HStack(spacing: Spacing.md) {
+                    HStack(spacing: 8) {
                         ActivityStatCard(
-                            title: "Active Time",
+                            title: "ACTIVE",
                             value: formatDuration(stats.totalActiveTime)
                         )
                         
                         ActivityStatCard(
-                            title: "Top App",
+                            title: "TOP APP",
                             value: stats.topApps.first?.appName ?? "—"
                         )
                         
                         ActivityStatCard(
-                            title: "Sessions",
+                            title: "SESSIONS",
                             value: "\(stats.sessionsToday)"
-                        )
-                        
-                        ActivityStatCard(
-                            title: "Total Events",
-                            value: "\(stats.totalEvents)"
                         )
                     }
                 }
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
+            .padding(16)
+            .background(
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
