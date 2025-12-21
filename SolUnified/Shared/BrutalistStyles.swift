@@ -7,42 +7,61 @@
 
 import SwiftUI
 
+// MARK: - Visual Effect View for macOS Vibrancy
+struct VisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
+
 // MARK: - Colors
 extension Color {
     static var brutalistBgPrimary: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#0a0a0a") : Color(hex: "#fafafa")
+        AppSettings.shared.isDarkMode ? Color(hex: "#050505") : Color(hex: "#fafafa")
     }
     
     static var brutalistBgSecondary: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#18181b") : Color(hex: "#ffffff")
+        AppSettings.shared.isDarkMode ? Color(hex: "#0D0D0D") : Color(hex: "#ffffff")
     }
     
     static var brutalistBgTertiary: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#27272a") : Color(hex: "#f4f4f5")
+        AppSettings.shared.isDarkMode ? Color(hex: "#1A1A1A") : Color(hex: "#f4f4f5")
     }
     
     static var brutalistTextPrimary: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#fafafa") : Color(hex: "#18181b")
+        AppSettings.shared.isDarkMode ? Color(hex: "#FFFFFF") : Color(hex: "#18181b")
     }
     
     static var brutalistTextSecondary: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#a1a1aa") : Color(hex: "#52525b")
+        AppSettings.shared.isDarkMode ? Color(hex: "#8E8E93") : Color(hex: "#52525b")
     }
     
     static var brutalistTextMuted: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#71717a") : Color(hex: "#a1a1aa")
+        AppSettings.shared.isDarkMode ? Color(hex: "#48484A") : Color(hex: "#a1a1aa")
     }
     
     static var brutalistBorder: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#3f3f46") : Color(hex: "#e4e4e7")
+        AppSettings.shared.isDarkMode ? Color(hex: "#1C1C1E") : Color(hex: "#e4e4e7")
     }
     
     static var brutalistAccent: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#60a5fa") : Color(hex: "#3b82f6")
+        AppSettings.shared.isDarkMode ? Color(hex: "#0A84FF") : Color(hex: "#3b82f6")
     }
     
     static var brutalistAccentHover: Color {
-        AppSettings.shared.isDarkMode ? Color(hex: "#3b82f6") : Color(hex: "#2563eb")
+        AppSettings.shared.isDarkMode ? Color(hex: "#409CFF") : Color(hex: "#2563eb")
     }
     
     init(hex: String) {
@@ -72,77 +91,70 @@ extension Color {
 
 // MARK: - Spacing
 struct Spacing {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 16
-    static let lg: CGFloat = 24
-    static let xl: CGFloat = 32
+    static let xs: CGFloat = 2
+    static let sm: CGFloat = 6
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 20
+    static let xl: CGFloat = 28
 }
 
 // MARK: - Line Spacing
 struct LineSpacing {
-    static let compact: CGFloat = 1.2
-    static let normal: CGFloat = 1.5
-    static let comfortable: CGFloat = 1.8
+    static let compact: CGFloat = 1.1
+    static let normal: CGFloat = 1.4
+    static let comfortable: CGFloat = 1.6
 }
 
 // MARK: - Border Radius
 struct BorderRadius {
-    static let sm: CGFloat = 10
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 16
+    static let sm: CGFloat = 4
+    static let md: CGFloat = 8
+    static let lg: CGFloat = 12
 }
 
 // MARK: - Typography
 struct Typography {
-    static let headingSize: CGFloat = 18
-    static let bodySize: CGFloat = 14
-    static let smallSize: CGFloat = 12
-    static let lineHeight: CGFloat = 1.5
+    static let headingSize: CGFloat = 16
+    static let bodySize: CGFloat = 12
+    static let smallSize: CGFloat = 10
+    static let lineHeight: CGFloat = 1.4
 }
 
 // MARK: - Button Styles
 struct BrutalistButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
-            .background(Color.brutalistBgSecondary)
-            .foregroundColor(Color.brutalistTextSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: BorderRadius.sm)
-                    .stroke(Color.brutalistBorder, lineWidth: 1)
-            )
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.brutalistBgTertiary)
+            .foregroundColor(Color.brutalistTextPrimary)
+            .cornerRadius(6)
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
     }
 }
 
 struct BrutalistPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             .background(configuration.isPressed ? Color.brutalistAccentHover : Color.brutalistAccent)
             .foregroundColor(.white)
-            .cornerRadius(BorderRadius.sm)
+            .cornerRadius(8)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
     }
 }
 
 struct BrutalistSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
             .background(Color.brutalistBgTertiary)
-            .foregroundColor(Color.brutalistTextMuted)
-            .overlay(
-                RoundedRectangle(cornerRadius: BorderRadius.sm)
-                    .stroke(Color.brutalistBorder, lineWidth: 1)
-            )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .foregroundColor(Color.brutalistTextSecondary)
+            .cornerRadius(6)
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
     }
 }
 
@@ -150,10 +162,13 @@ struct BrutalistSecondaryButtonStyle: ButtonStyle {
 struct BrutalistCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(Spacing.lg)
+            .padding(16)
             .background(Color.brutalistBgSecondary)
-            .cornerRadius(BorderRadius.md)
-            .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.brutalistBorder, lineWidth: 1)
+            )
     }
 }
 

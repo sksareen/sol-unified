@@ -8,44 +8,58 @@
 import SwiftUI
 
 struct TabNavigator: View {
-    @State private var selectedTab: AppTab = .notes
+    @State private var selectedTab: AppTab = .tasks {
+        didSet {
+            // Track tab switch
+            InternalAppTracker.shared.trackTabSwitch(to: selectedTab)
+        }
+    }
     @ObservedObject var settings = AppSettings.shared
-    @ObservedObject var timerStore = TimerStore.shared
     @FocusState private var tabFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // Progress Bar (above tab bar, only when timer is running)
-            if timerStore.isRunning {
-                GeometryReader { geometry in
-                    let progress = timerStore.totalDuration > 0 ? 
-                        max(0.0, min(1.0, timerStore.timeRemaining / timerStore.totalDuration)) : 0.0
-                    
-                    HStack(spacing: 0) {
-                        Rectangle()
-                            .fill(Color.brutalistAccent.opacity(0.6))
-                            .frame(width: geometry.size.width * progress, height: 3)
-                            .animation(.linear(duration: 1.0), value: progress)
-                        
-                        Spacer()
-                    }
-                }
-                .frame(height: 3)
-            }
             
-            // Tab Bar
-            HStack(spacing: Spacing.md) {
-                TabButton(title: "NOTES", tab: .notes, selectedTab: $selectedTab)
+            // Tab Bar - Nordic Minimalist Style
+            HStack(spacing: 0) {
+                TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
                     .keyboardShortcut("1", modifiers: .command)
                 
-                TabButton(title: "CLIPBOARD", tab: .clipboard, selectedTab: $selectedTab)
+                TabButton(title: "Agents", tab: .agents, selectedTab: $selectedTab)
                     .keyboardShortcut("2", modifiers: .command)
-                
-                TabButton(title: "SCREENSHOTS", tab: .screenshots, selectedTab: $selectedTab)
+
+                TabButton(title: "Vault", tab: .vault, selectedTab: $selectedTab)
                     .keyboardShortcut("3", modifiers: .command)
                 
-                TimerTabButton(selectedTab: $selectedTab, timerStore: timerStore)
+                TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
                     .keyboardShortcut("4", modifiers: .command)
+                
+                TabButton(title: "Terminal", tab: .terminal, selectedTab: $selectedTab)
+                    .keyboardShortcut("5", modifiers: .command)
+                
+                Button(action: {
+                    NotificationCenter.default.post(name: NSNotification.Name("FocusVaultSearch"), object: nil)
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("p", modifiers: .command)
+                .hidden()
+                
+                Button(action: {
+                    AppSettings.shared.increaseWindowSize()
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("=", modifiers: .command)
+                .hidden()
+                
+                Button(action: {
+                    AppSettings.shared.decreaseWindowSize()
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .hidden()
                 
                 Spacer()
                 
@@ -54,61 +68,59 @@ struct TabNavigator: View {
                     settings.showSettings = true
                 }) {
                     Image(systemName: "gearshape")
-                        .font(.system(size: Typography.bodySize))
-                        .foregroundColor(Color.brutalistTextSecondary)
-                        .padding(Spacing.sm)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(Color.brutalistTextSecondary.opacity(0.7))
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("Settings (Cmd+,)")
+                .help("Settings")
                 .keyboardShortcut(",", modifiers: .command)
+                .disabled(settings.showSettings)
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
-            .focused($tabFocused)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 0)
+            .frame(height: 44)
+            .background(Color(NSColor.windowBackgroundColor))
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
+                    .foregroundColor(Color.gray.opacity(0.15)),
                 alignment: .bottom
             )
+            .focused($tabFocused)
             
             // Content Area
             Group {
                 switch selectedTab {
-                case .notes:
-                    NotesView()
-                case .clipboard:
-                    ClipboardView()
-                case .screenshots:
-                    ScreenshotsView()
-                case .timer:
-                    TimerView()
+                case .tasks:
+                    TasksView()
+                case .agents:
+                    AgentContextView()
+                case .vault:
+                    VaultView()
+                case .context:
+                    ContextView()
+                case .terminal:
+                    TerminalView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.brutalistBgPrimary)
-        .sheet(isPresented: $settings.showSettings) {
+        .sheet(isPresented: $settings.showSettings, onDismiss: {
+            // Track settings close
+            InternalAppTracker.shared.trackSettingsClose()
+        }) {
             SettingsView()
+        }
+        .onChange(of: settings.showSettings) { isOpen in
+            if isOpen {
+                // Track settings open
+                InternalAppTracker.shared.trackSettingsOpen()
+            }
         }
         .onAppear {
             tabFocused = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CycleTab"))) { _ in
-            cycleTab()
-        }
-    }
-    
-    private func cycleTab() {
-        switch selectedTab {
-        case .notes:
-            selectedTab = .clipboard
-        case .clipboard:
-            selectedTab = .screenshots
-        case .screenshots:
-            selectedTab = .timer
-        case .timer:
-            selectedTab = .notes
         }
     }
 }
@@ -124,52 +136,27 @@ struct TabButton: View {
     
     var body: some View {
         Button(action: {
-            selectedTab = tab
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedTab = tab
+            }
         }) {
-            Text(title)
-                .font(.system(size: Typography.bodySize, weight: isSelected ? .semibold : .regular))
-                .foregroundColor(isSelected ? Color.brutalistTextPrimary : Color.brutalistTextSecondary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.sm)
-                .background(
-                    isSelected ? Color.brutalistBgTertiary : Color.clear
-                )
-                .cornerRadius(BorderRadius.sm)
+            VStack(spacing: 0) {
+                Spacer()
+                
+                Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(isSelected ? Color.primary : Color.secondary.opacity(0.6))
+                    .padding(.bottom, 10)
+                
+                Rectangle()
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+                    .frame(height: 2)
+            }
         }
         .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct TimerTabButton: View {
-    @Binding var selectedTab: AppTab
-    @ObservedObject var timerStore: TimerStore
-    
-    var isSelected: Bool {
-        selectedTab == .timer
-    }
-    
-    var title: String {
-        if timerStore.isRunning && timerStore.timeRemaining > 0 {
-            return "TIMER (\(timerStore.formatTime(timerStore.timeRemaining)))"
-        }
-        return "TIMER"
-    }
-    
-    var body: some View {
-        Button(action: {
-            selectedTab = .timer
-        }) {
-            Text(title)
-                .font(.system(size: Typography.bodySize, weight: isSelected ? .semibold : .regular))
-                .foregroundColor(isSelected ? Color.brutalistTextPrimary : Color.brutalistTextSecondary)
-                .padding(.horizontal, Spacing.lg)
-                .padding(.vertical, Spacing.sm)
-                .background(
-                    isSelected ? Color.brutalistBgTertiary : Color.clear
-                )
-                .cornerRadius(BorderRadius.sm)
-        }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .contentShape(Rectangle())
     }
 }
 

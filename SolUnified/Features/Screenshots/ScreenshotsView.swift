@@ -14,6 +14,7 @@ struct ScreenshotsView: View {
     @ObservedObject var analyzer = ScreenshotAnalyzer.shared
     @State private var searchText = ""
     @State private var selectedScreenshot: Screenshot?
+    @State private var selectedId: Screenshot.ID?
     @State private var showingStats = false
     @State private var scanMessage = ""
     @State private var isLoading = false
@@ -23,34 +24,45 @@ struct ScreenshotsView: View {
             // Header
             HStack {
                 Text("SCREENSHOTS")
-                    .font(.system(size: Typography.headingSize, weight: .semibold))
-                    .foregroundColor(Color.brutalistTextPrimary)
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(1)
+                    .foregroundColor(.secondary)
                 
                 Spacer()
                 
                 if !scanMessage.isEmpty {
-                    Text(scanMessage)
-                        .font(.system(size: Typography.smallSize))
+                    Text(scanMessage.uppercased())
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundColor(Color.brutalistAccent)
-                        .padding(.trailing, Spacing.md)
+                        .padding(.trailing, 8)
                 }
                 
-                Button("Scan") {
-                    Task {
-                        await scanDirectory()
+                HStack(spacing: 8) {
+                    Button(action: {
+                        Task {
+                            await scanDirectory()
+                        }
+                    }) {
+                        Label("SCAN", systemImage: "magnifyingglass")
+                            .font(.system(size: 10, weight: .bold))
                     }
+                    .buttonStyle(BrutalistSecondaryButtonStyle())
+                    .disabled(scanner.isScanning || isLoading)
+                    
+                    Button(action: {
+                        store.getStats()
+                        showingStats = true
+                    }) {
+                        Label("STATS", systemImage: "chart.bar.fill")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .buttonStyle(BrutalistSecondaryButtonStyle())
                 }
-                .buttonStyle(BrutalistSecondaryButtonStyle())
-                .disabled(scanner.isScanning || isLoading)
-                
-                Button("Stats") {
-                    store.getStats()
-                    showingStats = true
-                }
-                .buttonStyle(BrutalistSecondaryButtonStyle())
             }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
+            .padding(16)
+            .background(
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)
@@ -114,16 +126,49 @@ struct ScreenshotsView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: Spacing.md) {
-                        ForEach(store.screenshots) { screenshot in
-                            ScreenshotCard(screenshot: screenshot)
-                                .onTapGesture {
-                                    selectedScreenshot = screenshot
-                                }
+                Table(store.screenshots, selection: $selectedId) {
+                    TableColumn("Preview") { screenshot in
+                        if let nsImage = NSImage(contentsOfFile: screenshot.filepath) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 60, height: 40)
+                                .cornerRadius(4)
+                                .padding(.vertical, 2)
+                        } else {
+                            Rectangle()
+                                .fill(Color.brutalistBgTertiary)
+                                .frame(width: 60, height: 40)
+                                .cornerRadius(4)
+                                .padding(.vertical, 2)
                         }
                     }
-                    .padding(Spacing.lg)
+                    .width(60)
+                    
+                    TableColumn("Name", value: \.filename)
+                    
+                    TableColumn("Description") { screenshot in
+                        Text(screenshot.aiDescription ?? "-")
+                            .font(.system(size: Typography.bodySize))
+                    }
+                    
+                    TableColumn("Tags") { screenshot in
+                        Text(screenshot.aiTags ?? "-")
+                            .font(.system(size: Typography.smallSize))
+                            .foregroundColor(Color.brutalistTextMuted)
+                    }
+                    
+                    TableColumn("Created") { screenshot in
+                        Text(screenshot.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.system(size: Typography.smallSize))
+                    }
+                }
+                .onChange(of: selectedId) { newId in
+                    if let id = newId, let screenshot = store.screenshots.first(where: { $0.id == id }) {
+                        selectedScreenshot = screenshot
+                        // Deselect to allow clicking the same item again
+                        selectedId = nil
+                    }
                 }
             }
         }
@@ -183,57 +228,6 @@ struct ScreenshotsView: View {
     }
 }
 
-struct ScreenshotCard: View {
-    let screenshot: Screenshot
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            // Image thumbnail
-            if let nsImage = NSImage(contentsOfFile: screenshot.filepath) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 150)
-                    .clipped()
-                    .cornerRadius(BorderRadius.sm)
-            } else {
-                Rectangle()
-                    .fill(Color.brutalistBgTertiary)
-                    .frame(height: 150)
-                    .overlay(
-                        Text("Image not found")
-                            .font(.system(size: Typography.smallSize))
-                            .foregroundColor(Color.brutalistTextMuted)
-                    )
-                    .cornerRadius(BorderRadius.sm)
-            }
-            
-            // Description
-            if let description = screenshot.aiDescription {
-                Text(description)
-                    .font(.system(size: Typography.bodySize))
-                    .foregroundColor(Color.brutalistTextPrimary)
-                    .lineLimit(2)
-            }
-            
-            // Tags
-            if let tags = screenshot.aiTags {
-                Text(tags)
-                    .font(.system(size: Typography.smallSize))
-                    .foregroundColor(Color.brutalistTextSecondary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(Spacing.md)
-        .background(Color.brutalistBgSecondary)
-        .cornerRadius(BorderRadius.md)
-        .overlay(
-            RoundedRectangle(cornerRadius: BorderRadius.md)
-                .stroke(Color.brutalistBorder, lineWidth: 1)
-        )
-    }
-}
-
 struct ScreenshotDetailView: View {
     let screenshot: Screenshot
     @Environment(\.dismiss) var dismiss
@@ -278,6 +272,7 @@ struct ScreenshotDetailView: View {
                     
                     // Details
                     DetailRow(label: "Filename", value: screenshot.filename)
+                    DetailRow(label: "Full Path", value: screenshot.filepath)
                     DetailRow(label: "Size", value: formatFileSize(screenshot.fileSize))
                     DetailRow(label: "Dimensions", value: "\(screenshot.width) × \(screenshot.height)")
                     
@@ -324,6 +319,7 @@ struct DetailRow: View {
             Text(value)
                 .font(.system(size: Typography.bodySize))
                 .foregroundColor(Color.brutalistTextPrimary)
+                .textSelection(.enabled)
         }
         .padding(Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)

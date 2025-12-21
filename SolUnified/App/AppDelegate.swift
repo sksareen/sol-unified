@@ -11,6 +11,7 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
     var windowManager: WindowManager?
     var hotkeyManager = HotkeyManager.shared
+    var memoryTracker = MemoryTracker.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (app is menu bar only with hotkey)
@@ -20,6 +21,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !Database.shared.initialize() {
             print("Failed to initialize database")
         }
+        
+        // Initialize activity store
+        let activityStore = ActivityStore.shared
         
         // Create main content view
         let contentView = TabNavigator()
@@ -40,30 +44,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Failed to register hotkey")
         }
         
-        // Setup local event monitor for Tab key (before clipboard to avoid conflicts)
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.keyCode == 48 && event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] {
-                // Tab key pressed
-                NotificationCenter.default.post(name: NSNotification.Name("CycleTab"), object: nil)
-                return nil // Consume the event
-            }
-            return event
-        }
+        // Removed Tab key cycling - using individual tab shortcuts instead
         
         // Start clipboard monitoring after a small delay to ensure app is ready
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             ClipboardMonitor.shared.startMonitoring()
+            
+            // Start activity monitoring if enabled
+            if AppSettings.shared.activityLoggingEnabled {
+                activityStore.startMonitoring()
+            }
+            
+            // Start memory tracking for agent intelligence
+            print("🧠 Starting memory tracking for agent bridge")
+            self.memoryTracker.updateContextFile() // Initial update
+            
+            // Cleanup old activity logs based on retention setting
+            let retentionDays = AppSettings.shared.activityLogRetentionDays
+            _ = Database.shared.cleanupOldActivityLogs(olderThan: retentionDays)
         }
         
         print("Sol Unified started successfully")
         print("Press Option+` to show/hide the window")
-        print("Press Tab to cycle through tabs")
     }
     
     func applicationWillTerminate(_ notification: Notification) {
         // Cleanup
         ClipboardMonitor.shared.stopMonitoring()
-        TimerStore.shared.stopTimer()
+        ActivityStore.shared.stopMonitoring()
         hotkeyManager.unregister()
     }
     

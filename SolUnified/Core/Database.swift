@@ -13,6 +13,7 @@ class Database {
     
     private var db: OpaquePointer?
     private let dbPath: String
+    private let dbQueue = DispatchQueue(label: "com.solunified.database", qos: .utility)
     
     private init() {
         let fileManager = FileManager.default
@@ -27,15 +28,33 @@ class Database {
     }
     
     func initialize() -> Bool {
-        if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("Error opening database")
-            return false
+        var result: Bool = false
+        dbQueue.sync {
+            if sqlite3_open(dbPath, &db) != SQLITE_OK {
+                print("Error opening database")
+                result = false
+                return
+            }
+            
+            // Enable WAL mode for better concurrent access and performance
+            if !executeSync("PRAGMA journal_mode=WAL;") {
+                print("Warning: Failed to enable WAL mode")
+            }
+            
+            result = createTablesSync()
         }
-        
-        return createTables()
+        return result
     }
     
     private func createTables() -> Bool {
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.createTablesSync()
+        }
+        return result
+    }
+    
+    private func createTablesSync() -> Bool {
         let tables = [
             """
             CREATE TABLE IF NOT EXISTS notes (
@@ -81,11 +100,27 @@ class Database {
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_screenshots_filename ON screenshots(filename)",
-            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)"
+            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)",
+            
+            """
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                app_bundle_id TEXT,
+                app_name TEXT,
+                window_title TEXT,
+                event_data TEXT,
+                timestamp TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)"
         ]
         
         for sql in tables {
-            if !execute(sql) {
+            if !executeSync(sql) {
                 print("Failed to create table: \(sql)")
                 return false
             }
@@ -96,6 +131,14 @@ class Database {
     
     @discardableResult
     func execute(_ sql: String, parameters: [Any] = []) -> Bool {
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.executeSync(sql, parameters: parameters)
+        }
+        return result
+    }
+    
+    private func executeSync(_ sql: String, parameters: [Any] = []) -> Bool {
         var statement: OpaquePointer?
         
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
@@ -117,13 +160,21 @@ class Database {
             }
         }
         
-        let result = sqlite3_step(statement)
+        let stepResult = sqlite3_step(statement)
         sqlite3_finalize(statement)
         
-        return result == SQLITE_DONE || result == SQLITE_ROW
+        return stepResult == SQLITE_DONE || stepResult == SQLITE_ROW
     }
     
     func query(_ sql: String, parameters: [Any] = []) -> [[String: Any]] {
+        var results: [[String: Any]] = []
+        dbQueue.sync {
+            results = self.querySync(sql, parameters: parameters)
+        }
+        return results
+    }
+    
+    private func querySync(_ sql: String, parameters: [Any] = []) -> [[String: Any]] {
         var statement: OpaquePointer?
         var results: [[String: Any]] = []
         
@@ -177,7 +228,134 @@ class Database {
     }
     
     func lastInsertRowId() -> Int {
-        return Int(sqlite3_last_insert_rowid(db))
+        var rowId: Int = 0
+        dbQueue.sync {
+            rowId = Int(sqlite3_last_insert_rowid(db))
+        }
+        return rowId
+    }
+    
+    // MARK: - Activity Log Methods
+    
+    func insertActivityEvents(_ events: [ActivityEvent]) -> Bool {
+        guard !events.isEmpty else { return true }
+        
+        var result: Bool = false
+        dbQueue.sync {
+            result = self.insertActivityEventsSync(events)
+        }
+        return result
+    }
+    
+    private func insertActivityEventsSync(_ events: [ActivityEvent]) -> Bool {
+        if !beginTransactionSync() {
+            print("Failed to begin transaction for activity events")
+            return false
+        }
+        
+        let sql = """
+            INSERT INTO activity_log (event_type, app_bundle_id, app_name, window_title, event_data, timestamp, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+        
+        var success = true
+        for event in events {
+            var statement: OpaquePointer?
+            
+            guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+                print("Error preparing activity event insert: \(String(cString: sqlite3_errmsg(db)))")
+                success = false
+                break
+            }
+            
+            // Bind parameters
+            sqlite3_bind_text(statement, 1, (event.eventType.rawValue as NSString).utf8String, -1, nil)
+            
+            if let bundleId = event.appBundleId {
+                sqlite3_bind_text(statement, 2, (bundleId as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 2)
+            }
+            
+            if let appName = event.appName {
+                sqlite3_bind_text(statement, 3, (appName as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 3)
+            }
+            
+            if let windowTitle = event.windowTitle {
+                sqlite3_bind_text(statement, 4, (windowTitle as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 4)
+            }
+            
+            if let eventData = event.eventData {
+                sqlite3_bind_text(statement, 5, (eventData as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 5)
+            }
+            
+            sqlite3_bind_text(statement, 6, (Database.dateToString(event.timestamp) as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 7, (Database.dateToString(event.createdAt) as NSString).utf8String, -1, nil)
+            
+            if sqlite3_step(statement) != SQLITE_DONE {
+                print("Error inserting activity event: \(String(cString: sqlite3_errmsg(db)))")
+                success = false
+            }
+            
+            sqlite3_finalize(statement)
+            
+            if !success {
+                break
+            }
+        }
+        
+        if success {
+            if !commitTransactionSync() {
+                print("Failed to commit transaction for activity events")
+                success = false
+            }
+        } else {
+            _ = rollbackTransactionSync()
+        }
+        
+        return success
+    }
+    
+    func cleanupOldActivityLogs(olderThan days: Int) -> Bool {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let cutoffString = Database.dateToString(cutoffDate)
+        
+        return execute(
+            "DELETE FROM activity_log WHERE timestamp < ?",
+            parameters: [cutoffString]
+        )
+    }
+    
+    // MARK: - Transaction Helpers
+    
+    private func beginTransaction() -> Bool {
+        return execute("BEGIN TRANSACTION")
+    }
+    
+    private func beginTransactionSync() -> Bool {
+        return executeSync("BEGIN TRANSACTION")
+    }
+    
+    private func commitTransaction() -> Bool {
+        return execute("COMMIT")
+    }
+    
+    private func commitTransactionSync() -> Bool {
+        return executeSync("COMMIT")
+    }
+    
+    private func rollbackTransaction() -> Bool {
+        return execute("ROLLBACK")
+    }
+    
+    private func rollbackTransactionSync() -> Bool {
+        return executeSync("ROLLBACK")
     }
     
     deinit {

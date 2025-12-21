@@ -53,9 +53,20 @@ screenshot-organizer/backend/.env
 # Logs
 *.log
 backend.log
+agent_messages.log
 
 # Temporary files
 *.tmp
 *.temp
 *~
 
+# Personal/Agent files
+agent_state.json
+agent_bridge.json
+message_queue.json
+.message_lock
+ai_context.json
+
+# Test and simulation files
+simulate_*.py
+test_*.py

@@ -18,8 +18,53 @@ class ScreenshotScanner: ObservableObject {
     @Published var scanProgress: Double = 0.0
     
     private let db = Database.shared
+    private var directoryMonitor: DispatchSourceFileSystemObject?
+    private var fileDescriptor: CInt = -1
     
     private init() {}
+    
+    func startMonitoring(directory: String) {
+        stopMonitoring()
+        
+        let expandedPath = (directory as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expandedPath)
+        
+        fileDescriptor = open(url.path, O_EVTONLY)
+        guard fileDescriptor != -1 else {
+            print("❌ Failed to open directory for monitoring: \(url.path)")
+            return
+        }
+        
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fileDescriptor,
+            eventMask: .write,
+            queue: DispatchQueue.global()
+        )
+        
+        source.setEventHandler { [weak self] in
+            print("📁 Detected change in screenshot directory")
+            // Debounce slightly to avoid rapid-fire scans
+            Task {
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                try? await self?.scanDirectory(directory)
+            }
+        }
+        
+        source.setCancelHandler { [weak self] in
+            guard let self = self else { return }
+            close(self.fileDescriptor)
+            self.fileDescriptor = -1
+        }
+        
+        source.resume()
+        directoryMonitor = source
+        print("👀 Started monitoring screenshot directory: \(directory)")
+    }
+    
+    func stopMonitoring() {
+        directoryMonitor?.cancel()
+        directoryMonitor = nil
+    }
     
     func scanDirectory(_ directoryPath: String) async throws -> ScanResult {
         await MainActor.run {
@@ -133,6 +178,12 @@ class ScreenshotScanner: ObservableObject {
         }
         
         print("✅ Scan complete: \(stats)")
+        
+        // Notify store to reload
+        await MainActor.run {
+            ScreenshotsStore.shared.loadScreenshots()
+        }
+        
         return stats
     }
     
