@@ -7,27 +7,35 @@
 
 import SwiftUI
 
+class VaultFilesStore: ObservableObject {
+    static let shared = VaultFilesStore()
+    @Published var files: [MarkdownFile] = []
+    @Published var hasLoaded = false
+    @Published var expandedFolders: Set<String> = []
+    @Published var isCollapsed: Bool = false
+    
+    private init() {}
+}
+
 struct VaultFileBrowser: View {
     let vaultPath: String
     @Binding var selectedFile: URL?
-    @State private var files: [MarkdownFile] = []
+    @StateObject private var filesStore = VaultFilesStore.shared
     @State private var searchQuery: String = ""
-    @State private var expandedFolders: Set<String> = []
-    @State private var isCollapsed: Bool = false
     @FocusState private var isSearchFocused: Bool
     
     var filteredFiles: [MarkdownFile] {
         if searchQuery.isEmpty {
-            return files
+            return filesStore.files
         }
-        return files.filter { file in
+        return filesStore.files.filter { file in
             file.name.lowercased().contains(searchQuery.lowercased())
         }
     }
     
     var body: some View {
         HStack(spacing: 0) {
-            if !isCollapsed {
+            if !filesStore.isCollapsed {
                 VStack(spacing: 0) {
                     // Search bar
             HStack {
@@ -42,7 +50,7 @@ struct VaultFileBrowser: View {
                     .onChange(of: searchQuery) { newValue in
                         if !newValue.isEmpty {
                             // Expand all folders when searching
-                            expandedFolders = Set(groupFilesByFolder(filteredFiles).map { $0.folder })
+                            filesStore.expandedFolders = Set(groupFilesByFolder(filteredFiles).map { $0.folder })
                         }
                     }
                 
@@ -74,7 +82,7 @@ struct VaultFileBrowser: View {
                                 toggleFolder(group.folder)
                             }) {
                                 HStack(spacing: 4) {
-                                    Image(systemName: expandedFolders.contains(group.folder) ? "chevron.down" : "chevron.right")
+                                    Image(systemName: filesStore.expandedFolders.contains(group.folder) ? "chevron.down" : "chevron.right")
                                         .font(.system(size: 9, weight: .bold))
                                     
                                     Image(systemName: "folder.fill")
@@ -97,7 +105,7 @@ struct VaultFileBrowser: View {
                             .background(Color.brutalistBgTertiary.opacity(0.5))
                             
                             // Files in folder
-                            if expandedFolders.contains(group.folder) {
+                            if filesStore.expandedFolders.contains(group.folder) {
                                 ForEach(group.files) { file in
                                     FileRow(
                                         file: file,
@@ -122,17 +130,17 @@ struct VaultFileBrowser: View {
             // Collapse/Expand button
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isCollapsed.toggle()
+                    filesStore.isCollapsed.toggle()
                 }
             }) {
-                Image(systemName: isCollapsed ? "sidebar.left" : "sidebar.left.slash")
+                Image(systemName: filesStore.isCollapsed ? "sidebar.left" : "sidebar.left.slash")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.brutalistTextSecondary)
                     .frame(width: 24, height: 24)
                     .background(Color.brutalistBgSecondary)
             }
             .buttonStyle(PlainButtonStyle())
-            .help(isCollapsed ? "Show Sidebar" : "Hide Sidebar")
+            .help(filesStore.isCollapsed ? "Show Sidebar" : "Hide Sidebar")
         }
         .overlay(
             Rectangle()
@@ -141,7 +149,7 @@ struct VaultFileBrowser: View {
             alignment: .trailing
         )
         .onAppear {
-            if files.isEmpty {
+            if !filesStore.hasLoaded {
                 loadFiles()
             }
         }
@@ -150,37 +158,43 @@ struct VaultFileBrowser: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleVaultSidebar"))) { _ in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isCollapsed.toggle()
+                filesStore.isCollapsed.toggle()
             }
         }
     }
     
     private func loadFiles() {
-        let fileManager = FileManager.default
-        guard let enumerator = fileManager.enumerator(
-            at: URL(fileURLWithPath: vaultPath),
-            includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        ) else { return }
+        filesStore.hasLoaded = true
         
-        var foundFiles: [MarkdownFile] = []
-        
-        for case let fileURL as URL in enumerator {
-            // Skip excluded directories
-            let path = fileURL.path
-            if path.contains("node_modules") || path.contains(".git") || path.contains(".obsidian") {
-                enumerator.skipDescendants()
-                continue
+        DispatchQueue.global(qos: .userInitiated).async {
+            let fileManager = FileManager.default
+            guard let enumerator = fileManager.enumerator(
+                at: URL(fileURLWithPath: vaultPath),
+                includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            ) else { return }
+            
+            var foundFiles: [MarkdownFile] = []
+            
+            for case let fileURL as URL in enumerator {
+                let path = fileURL.path
+                if path.contains("node_modules") || path.contains(".git") || path.contains(".obsidian") {
+                    enumerator.skipDescendants()
+                    continue
+                }
+                
+                guard fileURL.pathExtension == "md" else { continue }
+                
+                let relativePath = fileURL.path.replacingOccurrences(of: vaultPath + "/", with: "")
+                foundFiles.append(MarkdownFile(url: fileURL, relativePath: relativePath))
             }
             
-            // Only include .md files
-            guard fileURL.pathExtension == "md" else { continue }
+            let sortedFiles = foundFiles.sorted { $0.relativePath < $1.relativePath }
             
-            let relativePath = fileURL.path.replacingOccurrences(of: vaultPath + "/", with: "")
-            foundFiles.append(MarkdownFile(url: fileURL, relativePath: relativePath))
+            DispatchQueue.main.async {
+                self.filesStore.files = sortedFiles
+            }
         }
-        
-        files = foundFiles.sorted { $0.relativePath < $1.relativePath }
     }
     
     private func groupFilesByFolder(_ files: [MarkdownFile]) -> [FileGroup] {
@@ -201,10 +215,10 @@ struct VaultFileBrowser: View {
     }
     
     private func toggleFolder(_ folder: String) {
-        if expandedFolders.contains(folder) {
-            expandedFolders.remove(folder)
+        if filesStore.expandedFolders.contains(folder) {
+            filesStore.expandedFolders.remove(folder)
         } else {
-            expandedFolders.insert(folder)
+            filesStore.expandedFolders.insert(folder)
         }
     }
 }

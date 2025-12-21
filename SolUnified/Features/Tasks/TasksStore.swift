@@ -6,7 +6,7 @@ class TasksStore: ObservableObject {
     @Published var lastUpdated: Date = Date()
     @Published var isSaving: Bool = false
     
-    private let statePath = "/Users/savarsareen/coding/mable/agent_state.json"
+    private let statePath = NSHomeDirectory() + "/Documents/agent_state.json"
     private var stateMonitor: DispatchSourceFileSystemObject?
     
     let availableAgents = ["devon", "josh", "gunter", "kevin", "mable"]

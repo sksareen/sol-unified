@@ -81,6 +81,8 @@ class TerminalStore: ObservableObject {
         terminal.nativeBackgroundColor = NSColor.black
         terminal.configureNativeColors()
         
+        terminal.getTerminal().silentLog = false
+        
         startShell()
     }
     

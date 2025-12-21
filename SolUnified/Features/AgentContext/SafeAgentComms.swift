@@ -73,8 +73,8 @@ struct MessageQueue: Codable {
 class SafeAgentComms {
     static let shared = SafeAgentComms()
     
-    private let queuePath = "/Users/savarsareen/coding/research/message_queue.json"
-    private let lockPath = "/Users/savarsareen/coding/research/.message_lock"
+    private let queuePath = NSHomeDirectory() + "/Documents/message_queue.json"
+    private let lockPath = NSHomeDirectory() + "/Documents/.message_lock"
     
     private init() {}
     
@@ -197,7 +197,7 @@ extension SafeAgentComms {
     }
     
     private func updateBridgeFromMessages(_ messages: [SafeMessage]) {
-        let bridgePath = "/Users/savarsareen/coding/research/agent_bridge.json"
+        let bridgePath = NSHomeDirectory() + "/Documents/agent_bridge.json"
         
         guard let data = FileManager.default.contents(atPath: bridgePath),
               var bridge = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

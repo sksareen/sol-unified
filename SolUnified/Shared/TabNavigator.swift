@@ -20,16 +20,22 @@ struct TabNavigator: View {
     var body: some View {
         VStack(spacing: 0) {
             
-            // Tab Bar
-            HStack(spacing: 4) {
-                TabButton(title: "TASKS", tab: .tasks, selectedTab: $selectedTab)
+            // Tab Bar - Nordic Minimalist Style
+            HStack(spacing: 0) {
+                TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
                     .keyboardShortcut("1", modifiers: .command)
                 
-                TabButton(title: "AGENTS", tab: .agents, selectedTab: $selectedTab)
+                TabButton(title: "Agents", tab: .agents, selectedTab: $selectedTab)
                     .keyboardShortcut("2", modifiers: .command)
 
-                TabButton(title: "VAULT", tab: .vault, selectedTab: $selectedTab)
+                TabButton(title: "Vault", tab: .vault, selectedTab: $selectedTab)
                     .keyboardShortcut("3", modifiers: .command)
+                
+                TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
+                    .keyboardShortcut("4", modifiers: .command)
+                
+                TabButton(title: "Terminal", tab: .terminal, selectedTab: $selectedTab)
+                    .keyboardShortcut("5", modifiers: .command)
                 
                 Button(action: {
                     NotificationCenter.default.post(name: NSNotification.Name("FocusVaultSearch"), object: nil)
@@ -55,39 +61,30 @@ struct TabNavigator: View {
                 .keyboardShortcut("-", modifiers: .command)
                 .hidden()
                 
-                // Cmd+B handled by VaultView directly
-                
-                TabButton(title: "CONTEXT", tab: .context, selectedTab: $selectedTab)
-                    .keyboardShortcut("4", modifiers: .command)
-                
-                TabButton(title: "TERMINAL", tab: .terminal, selectedTab: $selectedTab)
-                    .keyboardShortcut("5", modifiers: .command)
-                
                 Spacer()
                 
                 // Settings Button
                 Button(action: {
                     settings.showSettings = true
                 }) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color.brutalistTextSecondary)
-                        .padding(8)
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(Color.brutalistTextSecondary.opacity(0.7))
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("Settings (Cmd+,)")
+                .help("Settings")
                 .keyboardShortcut(",", modifiers: .command)
                 .disabled(settings.showSettings)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
-            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 0)
+            .frame(height: 44)
+            .background(Color(NSColor.windowBackgroundColor))
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
+                    .foregroundColor(Color.gray.opacity(0.15)),
                 alignment: .bottom
             )
             .focused($tabFocused)
@@ -139,27 +136,27 @@ struct TabButton: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 selectedTab = tab
             }
         }) {
-            Text(title)
-                .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                .tracking(0.5)
-                .foregroundColor(isSelected ? Color.brutalistTextPrimary : Color.brutalistTextSecondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    ZStack {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.brutalistBgTertiary)
-                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-                        }
-                    }
-                )
+            VStack(spacing: 0) {
+                Spacer()
+                
+                Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(isSelected ? Color.primary : Color.secondary.opacity(0.6))
+                    .padding(.bottom, 10)
+                
+                Rectangle()
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+                    .frame(height: 2)
+            }
         }
         .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .contentShape(Rectangle())
     }
 }
 

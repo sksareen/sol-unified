@@ -5,9 +5,19 @@ struct AgentContextView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar: All 4 Agents
+            // Top Bar: All 5 Agents
             HStack(spacing: 0) {
                 if let state = store.agentState {
+                    // Mable
+                    if let mable = state.active_agents["mable"] {
+                        CompactAgentStatus(
+                            name: "MABLE",
+                            role: "Orchestrator",
+                            color: Color(hex: "EC4899"),
+                            status: mable
+                        )
+                    }
+                    
                     // Devon
                     if let devon = state.active_agents["devon"] {
                         CompactAgentStatus(

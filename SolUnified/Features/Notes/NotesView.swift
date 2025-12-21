@@ -67,7 +67,7 @@ struct NotesView: View {
                 case .vault:
                     HStack(spacing: 0) {
                         VaultFileBrowser(
-                            vaultPath: "/Users/savarsareen/coding/mable",
+                            vaultPath: NSHomeDirectory() + "/Documents",
                             selectedFile: $selectedFile
                         )
                         
