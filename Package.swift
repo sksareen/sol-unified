@@ -7,10 +7,15 @@ let package = Package(
     products: [
         .executable(name: "SolUnified", targets: ["SolUnified"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.0.0")
+    ],
     targets: [
         .executableTarget(
             name: "SolUnified",
-            dependencies: [],
+            dependencies: [
+                .product(name: "SwiftTerm", package: "SwiftTerm")
+            ],
             path: "SolUnified",
             linkerSettings: [
                 .linkedFramework("AppKit"),

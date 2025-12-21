@@ -357,6 +357,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
         
         // End editing to apply all changes at once
         textStorage.endEditing()
+        
+        // Force layout invalidation to prevent disappearing text
+        textView.layoutManager?.invalidateLayout(forCharacterRange: fullRange, actualCharacterRange: nil)
+        textView.setNeedsDisplay(textView.bounds)
     }
     
     class Coordinator: NSObject, NSTextViewDelegate {

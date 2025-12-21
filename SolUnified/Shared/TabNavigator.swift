@@ -60,6 +60,9 @@ struct TabNavigator: View {
                 TabButton(title: "CONTEXT", tab: .context, selectedTab: $selectedTab)
                     .keyboardShortcut("4", modifiers: .command)
                 
+                TabButton(title: "TERMINAL", tab: .terminal, selectedTab: $selectedTab)
+                    .keyboardShortcut("5", modifiers: .command)
+                
                 Spacer()
                 
                 // Settings Button
@@ -100,6 +103,8 @@ struct TabNavigator: View {
                     VaultView()
                 case .context:
                     ContextView()
+                case .terminal:
+                    TerminalView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -926,6 +926,7 @@ class ActivityStore: ObservableObject {
         case .agents: return "Agents"
         case .vault: return "Vault"
         case .context: return "Context"
+        case .terminal: return "Terminal"
         }
     }
     

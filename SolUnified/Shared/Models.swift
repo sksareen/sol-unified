@@ -442,5 +442,6 @@ enum AppTab: String {
     case agents
     case vault
     case context
+    case terminal
 }
 
