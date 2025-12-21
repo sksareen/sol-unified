@@ -1,53 +1,78 @@
 import Foundation
 import Combine
 
-struct AgentContext: Codable {
-    var mission: String
-    var status: String
-    var todos: [String]
+struct AgentStatus: Codable, Identifiable {
+    let name: String
+    let last_active: String?
+    let current_focus: String
+    let status: String
+    
+    var id: String { name }
+    
+    init(name: String, last_active: String?, current_focus: String, status: String) {
+        self.name = name
+        self.last_active = last_active
+        self.current_focus = current_focus
+        self.status = status
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.last_active = try container.decodeIfPresent(String.self, forKey: .last_active)
+        self.current_focus = try container.decode(String.self, forKey: .current_focus)
+        self.status = try container.decode(String.self, forKey: .status)
+        // name is derived from the dictionary key, set externally
+        self.name = ""
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case last_active
+        case current_focus
+        case status
+    }
 }
 
 struct AgentMessage: Codable, Identifiable {
-    var id: String { timestamp } // Simple ID for SwiftUI
+    let id = UUID()
     let from: String
+    let to: String?
     let timestamp: String
     let content: String
     let priority: String?
     let action_requested: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case from, to, timestamp, content, priority, action_requested
+    }
 }
 
-struct AgentBridge: Codable {
-    var bridge_version: String
-    var shared_knowledge: SharedKnowledge?
-    var message_to_josh: AgentMessage?
-    var message_to_gunter: AgentMessage?
-    var last_sync: String
+struct AgentState: Codable {
+    let version: String
+    let last_updated: String
+    let system_status: String
+    let active_agents: [String: AgentStatus]
     
-    struct SharedKnowledge: Codable {
-        var research_findings: [String]?
-        var product_opportunities: [String]?
+    enum CodingKeys: String, CodingKey {
+        case version, last_updated, system_status, active_agents
     }
 }
 
 class AgentContextStore: ObservableObject {
-    @Published var joshContext: AgentContext?
-    @Published var researchContext: AgentContext?
-    @Published var agentBridge: AgentBridge?
+    @Published var agentState: AgentState?
+    @Published var messages: [AgentMessage] = []
     @Published var lastUpdated: Date = Date()
     @Published var isSyncing: Bool = false
     
-    private let joshPath = "/Users/savarsareen/coding/earn/josh/context.json"
-    private let researchPath = "/Users/savarsareen/coding/research/context.json"
-    private let bridgePath = "/Users/savarsareen/coding/research/agent_bridge.json"
+    private let statePath = "/Users/savarsareen/coding/mable/agent_state.json"
+    private let messagesPath = "/Users/savarsareen/coding/mable/agent_messages.log"
     
-    private var joshMonitor: DispatchSourceFileSystemObject?
-    private var researchMonitor: DispatchSourceFileSystemObject?
-    private var bridgeMonitor: DispatchSourceFileSystemObject?
+    private var stateMonitor: DispatchSourceFileSystemObject?
+    private var messagesMonitor: DispatchSourceFileSystemObject?
     
     private let memoryTracker = MemoryTracker.shared
     
     init() {
-        loadContexts()
+        loadData()
         startMonitoring()
     }
     
@@ -55,81 +80,19 @@ class AgentContextStore: ObservableObject {
         stopMonitoring()
     }
     
-    func loadContexts() {
-        joshContext = loadContext(from: joshPath)
-        researchContext = loadContext(from: researchPath)
-        agentBridge = loadBridge()
+    func loadData() {
+        agentState = loadState()
+        messages = loadMessages()
         lastUpdated = Date()
-        print("🔄 Contexts synced manually at \(lastUpdated)")
+        print("🔄 Agent data loaded at \(lastUpdated)")
     }
     
     func forceSync() {
         isSyncing = true
-        loadContexts()
-        updateBridgeLastSync()
+        loadData()
         
-        // Brief delay to show syncing state for better UX
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             self.isSyncing = false
-        }
-    }
-    
-    private func updateBridgeLastSync() {
-        guard var currentBridge = agentBridge else { return }
-        
-        currentBridge.last_sync = ISO8601DateFormatter().string(from: Date())
-        
-        // Save updated bridge
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(currentBridge)
-            try data.write(to: URL(fileURLWithPath: bridgePath))
-            
-            // Update local state
-            self.agentBridge = currentBridge
-        } catch {
-            print("Error updating bridge last_sync: \(error)")
-        }
-    }
-    
-    func sendMessage(content: String, to recipient: String) {
-        guard var currentBridge = agentBridge else { return }
-        
-        let message = AgentMessage(
-            from: "user",
-            timestamp: ISO8601DateFormatter().string(from: Date()),
-            content: content,
-            priority: "high",
-            action_requested: nil
-        )
-        
-        if recipient.lowercased() == "josh" {
-            currentBridge.message_to_josh = message
-        } else if recipient.lowercased() == "gunter" {
-            currentBridge.message_to_gunter = message
-        } else {
-            // Broadcast to both
-            currentBridge.message_to_josh = message
-            currentBridge.message_to_gunter = message
-        }
-        
-        currentBridge.last_sync = ISO8601DateFormatter().string(from: Date())
-        
-        // Save to file
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(currentBridge)
-            try data.write(to: URL(fileURLWithPath: bridgePath))
-            
-            // Update local state immediately
-            self.agentBridge = currentBridge
-            
-            // Trigger memory update
-            memoryTracker.updateContextFile()
-        } catch {
-            print("Error writing bridge: \(error)")
         }
     }
     
@@ -137,62 +100,86 @@ class AgentContextStore: ObservableObject {
         memoryTracker.updateContextFile()
     }
     
-    private func loadContext(from path: String) -> AgentContext? {
-        guard let data = FileManager.default.contents(atPath: path) else { return nil }
+    private func loadState() -> AgentState? {
+        guard let data = FileManager.default.contents(atPath: statePath) else {
+            print("⚠️ Could not read agent_state.json")
+            return nil
+        }
         
         do {
+            // Parse manually to inject agent names
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let json = json else { return nil }
-            
-            let mission = json["mission"] as? String ?? "No mission set"
-            let status = (json["status"] as? String) ?? (json["current_state"] as? String) ?? "Idle"
-            
-            var todos: [String] = []
-            if let todoList = json["todos"] as? [String] {
-                todos = todoList
-            } else if let priorities = json["next_priorities"] as? [String] {
-                todos = priorities
+            guard let json = json,
+                  let version = json["version"] as? String,
+                  let lastUpdated = json["last_updated"] as? String,
+                  let systemStatus = json["system_status"] as? String,
+                  let activeAgentsDict = json["active_agents"] as? [String: [String: Any]] else {
+                return nil
             }
             
-            return AgentContext(mission: mission, status: status, todos: todos)
+            var agents: [String: AgentStatus] = [:]
+            for (name, agentData) in activeAgentsDict {
+                let lastActive = agentData["last_active"] as? String
+                let currentFocus = agentData["current_focus"] as? String ?? ""
+                let status = agentData["status"] as? String ?? "offline"
+                
+                agents[name] = AgentStatus(
+                    name: name,
+                    last_active: lastActive,
+                    current_focus: currentFocus,
+                    status: status
+                )
+            }
             
+            return AgentState(
+                version: version,
+                last_updated: lastUpdated,
+                system_status: systemStatus,
+                active_agents: agents
+            )
         } catch {
-            print("Error decoding context at \(path): \(error)")
+            print("Error decoding agent_state.json: \(error)")
             return nil
         }
     }
     
-    private func loadBridge() -> AgentBridge? {
-        guard let data = FileManager.default.contents(atPath: bridgePath) else { return nil }
-        
-        do {
-            return try JSONDecoder().decode(AgentBridge.self, from: data)
-        } catch {
-            print("Error decoding bridge: \(error)")
-            return nil
+    private func loadMessages() -> [AgentMessage] {
+        guard let content = try? String(contentsOfFile: messagesPath, encoding: .utf8) else {
+            print("⚠️ Could not read agent_messages.log")
+            return []
         }
+        
+        let lines = content.components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        
+        var parsedMessages: [AgentMessage] = []
+        
+        for line in lines {
+            guard let data = line.data(using: .utf8) else { continue }
+            
+            do {
+                let message = try JSONDecoder().decode(AgentMessage.self, from: data)
+                parsedMessages.append(message)
+            } catch {
+                print("⚠️ Could not parse message line: \(error)")
+            }
+        }
+        
+        // Return in reverse chronological order (newest first)
+        return parsedMessages.reversed()
     }
     
     private func startMonitoring() {
-        monitorFile(path: joshPath) { [weak self] in
+        monitorFile(path: statePath) { [weak self] in
             DispatchQueue.main.async {
-                self?.joshContext = self?.loadContext(from: self?.joshPath ?? "")
+                self?.agentState = self?.loadState()
                 self?.lastUpdated = Date()
             }
         }
         
-        monitorFile(path: researchPath) { [weak self] in
+        monitorFile(path: messagesPath) { [weak self] in
             DispatchQueue.main.async {
-                self?.researchContext = self?.loadContext(from: self?.researchPath ?? "")
-                self?.lastUpdated = Date()
-            }
-        }
-        
-        monitorFile(path: bridgePath) { [weak self] in
-            print("Bridge file changed!") // Debug log
-            DispatchQueue.main.async {
-                print("Reloading bridge data...")
-                self?.agentBridge = self?.loadBridge()
+                self?.messages = self?.loadMessages() ?? []
                 self?.lastUpdated = Date()
             }
         }
@@ -202,7 +189,10 @@ class AgentContextStore: ObservableObject {
         let fileURL = URL(fileURLWithPath: path)
         let fileDescriptor = open(fileURL.path, O_EVTONLY)
         
-        guard fileDescriptor != -1 else { return }
+        guard fileDescriptor != -1 else {
+            print("⚠️ Could not open file descriptor for \(path)")
+            return
+        }
         
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
@@ -220,22 +210,18 @@ class AgentContextStore: ObservableObject {
         
         source.resume()
         
-        if path.contains("josh") {
-            joshMonitor = source
-        } else if path.contains("research/context") {
-            researchMonitor = source
+        if path.contains("agent_state") {
+            stateMonitor = source
         } else {
-            bridgeMonitor = source
+            messagesMonitor = source
         }
     }
     
     private func stopMonitoring() {
-        joshMonitor?.cancel()
-        researchMonitor?.cancel()
-        bridgeMonitor?.cancel()
+        stateMonitor?.cancel()
+        messagesMonitor?.cancel()
         
-        joshMonitor = nil
-        researchMonitor = nil
-        bridgeMonitor = nil
+        stateMonitor = nil
+        messagesMonitor = nil
     }
 }

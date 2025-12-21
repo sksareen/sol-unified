@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TabNavigator: View {
-    @State private var selectedTab: AppTab = .agents {
+    @State private var selectedTab: AppTab = .tasks {
         didSet {
             // Track tab switch
             InternalAppTracker.shared.trackTabSwitch(to: selectedTab)
@@ -22,20 +22,43 @@ struct TabNavigator: View {
             
             // Tab Bar
             HStack(spacing: 4) {
-                TabButton(title: "AGENTS", tab: .agents, selectedTab: $selectedTab)
+                TabButton(title: "TASKS", tab: .tasks, selectedTab: $selectedTab)
                     .keyboardShortcut("1", modifiers: .command)
-
-                TabButton(title: "NOTES", tab: .notes, selectedTab: $selectedTab)
-                    .keyboardShortcut("2", modifiers: .command)
                 
-                TabButton(title: "CLIPBOARD", tab: .clipboard, selectedTab: $selectedTab)
+                TabButton(title: "AGENTS", tab: .agents, selectedTab: $selectedTab)
+                    .keyboardShortcut("2", modifiers: .command)
+
+                TabButton(title: "VAULT", tab: .vault, selectedTab: $selectedTab)
                     .keyboardShortcut("3", modifiers: .command)
                 
-                TabButton(title: "SCREENSHOTS", tab: .screenshots, selectedTab: $selectedTab)
-                    .keyboardShortcut("4", modifiers: .command)
+                Button(action: {
+                    NotificationCenter.default.post(name: NSNotification.Name("FocusVaultSearch"), object: nil)
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("p", modifiers: .command)
+                .hidden()
                 
-                TabButton(title: "ACTIVITY", tab: .activity, selectedTab: $selectedTab)
-                    .keyboardShortcut("5", modifiers: .command)
+                Button(action: {
+                    AppSettings.shared.increaseWindowSize()
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("=", modifiers: .command)
+                .hidden()
+                
+                Button(action: {
+                    AppSettings.shared.decreaseWindowSize()
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .hidden()
+                
+                // Cmd+B handled by VaultView directly
+                
+                TabButton(title: "CONTEXT", tab: .context, selectedTab: $selectedTab)
+                    .keyboardShortcut("4", modifiers: .command)
                 
                 Spacer()
                 
@@ -51,6 +74,7 @@ struct TabNavigator: View {
                 .buttonStyle(PlainButtonStyle())
                 .help("Settings (Cmd+,)")
                 .keyboardShortcut(",", modifiers: .command)
+                .disabled(settings.showSettings)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -68,16 +92,14 @@ struct TabNavigator: View {
             // Content Area
             Group {
                 switch selectedTab {
-                case .notes:
-                    NotesView()
-                case .clipboard:
-                    ClipboardView()
-                case .screenshots:
-                    ScreenshotsView()
+                case .tasks:
+                    TasksView()
                 case .agents:
                     AgentContextView()
-                case .activity:
-                    ActivityView()
+                case .vault:
+                    VaultView()
+                case .context:
+                    ContextView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -98,25 +120,6 @@ struct TabNavigator: View {
         .onAppear {
             tabFocused = true
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CycleTab"))) { _ in
-            cycleTab()
-        }
-    }
-    
-    private func cycleTab() {
-        switch selectedTab {
-        case .agents:
-            selectedTab = .notes
-        case .notes:
-            selectedTab = .clipboard
-        case .clipboard:
-            selectedTab = .screenshots
-        case .screenshots:
-            selectedTab = .activity
-        case .activity:
-            selectedTab = .agents
-        }
-        // Tracking happens automatically via didSet
     }
 }
 

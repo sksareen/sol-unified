@@ -1,40 +1,41 @@
 //
-//  NotesView.swift
+//  ContextView.swift
 //  SolUnified
 //
-//  Main notes feature UI - Scratchpad + Vault browser
+//  Unified context view combining Activity, Screenshots, and Clipboard
 //
 
 import SwiftUI
 
-struct NotesView: View {
-    @State private var selectedMode: NotesMode = .scratchpad
-    @State private var selectedFile: URL?
+struct ContextView: View {
+    @State private var selectedSection: ContextSection = .clipboard
     
-    enum NotesMode: String, CaseIterable {
+    enum ContextSection: String, CaseIterable {
         case scratchpad = "SCRATCHPAD"
-        case vault = "VAULT"
+        case clipboard = "CLIPBOARD"
+        case screenshots = "SCREENSHOTS"
+        case activity = "ACTIVITY"
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Mode Selector
+            // Section Selector
             HStack(spacing: 4) {
-                ForEach(NotesMode.allCases, id: \.self) { mode in
+                ForEach(ContextSection.allCases, id: \.self) { section in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedMode = mode
+                            selectedSection = section
                         }
                     }) {
-                        Text(mode.rawValue)
-                            .font(.system(size: 11, weight: selectedMode == mode ? .bold : .medium))
+                        Text(section.rawValue)
+                            .font(.system(size: 11, weight: selectedSection == section ? .bold : .medium))
                             .tracking(0.5)
-                            .foregroundColor(selectedMode == mode ? .brutalistTextPrimary : .brutalistTextSecondary)
+                            .foregroundColor(selectedSection == section ? .brutalistTextPrimary : .brutalistTextSecondary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(
                                 ZStack {
-                                    if selectedMode == mode {
+                                    if selectedSection == section {
                                         RoundedRectangle(cornerRadius: 6)
                                             .fill(Color.brutalistBgTertiary)
                                             .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
@@ -61,30 +62,18 @@ struct NotesView: View {
             
             // Content
             Group {
-                switch selectedMode {
+                switch selectedSection {
                 case .scratchpad:
                     ScratchpadView()
-                case .vault:
-                    HStack(spacing: 0) {
-                        VaultFileBrowser(
-                            vaultPath: "/Users/savarsareen/coding/mable",
-                            selectedFile: $selectedFile
-                        )
-                        
-                        WYSIWYGMarkdownEditor(fileURL: $selectedFile)
-                    }
+                case .clipboard:
+                    ClipboardView()
+                case .screenshots:
+                    ScreenshotsView()
+                case .activity:
+                    ActivityView()
                 }
             }
         }
         .background(Color.brutalistBgPrimary)
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("FocusVaultSearch"))) { _ in
-            if selectedMode != .vault {
-                selectedMode = .vault
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleSidebar"))) { _ in
-            NotificationCenter.default.post(name: NSNotification.Name("ToggleVaultSidebar"), object: nil)
-        }
     }
 }
-

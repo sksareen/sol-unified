@@ -205,11 +205,11 @@ extension SafeAgentComms {
         }
         
         // Get latest messages for each direction
-        let latestToJosh = messages.filter { $0.to == "josh" }.last
+        let latestToDevon = messages.filter { $0.to == "devon" || $0.to == "josh" }.last
         let latestToGunter = messages.filter { $0.to == "gunter" }.last
         
         // Update bridge with latest messages
-        if let msg = latestToJosh {
+        if let msg = latestToDevon {
             bridge["message_to_josh"] = [
                 "from": msg.from,
                 "timestamp": msg.timestamp,

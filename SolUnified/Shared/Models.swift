@@ -356,12 +356,91 @@ struct TimelineBucket: Identifiable {
     }
 }
 
+// MARK: - Agent Task Models
+struct AgentTask: Identifiable, Codable {
+    let id: String
+    let title: String
+    let description: String
+    var assignedTo: String
+    var status: String
+    let priority: String
+    let createdAt: Date
+    var updatedAt: Date
+    let project: String
+    
+    init(id: String, title: String, description: String, assignedTo: String, status: String, priority: String, createdAt: Date, updatedAt: Date, project: String) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.assignedTo = assignedTo
+        self.status = status
+        self.priority = priority
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.project = project
+    }
+}
+
+struct AgentStateFile: Codable {
+    let version: String
+    let lastUpdated: String
+    let systemStatus: String
+    let activeProjects: [String: ProjectInfo]
+    let activeAgents: [String: AgentInfo]
+    let sharedContext: SharedContext
+    let tasks: [String: AgentTask]
+    
+    enum CodingKeys: String, CodingKey {
+        case version
+        case lastUpdated = "last_updated"
+        case systemStatus = "system_status"
+        case activeProjects = "active_projects"
+        case activeAgents = "active_agents"
+        case sharedContext = "shared_context"
+        case tasks
+    }
+    
+    struct ProjectInfo: Codable {
+        let status: String
+        let priority: String
+    }
+    
+    struct AgentInfo: Codable {
+        let lastActive: String?
+        let currentFocus: String
+        let status: String
+        
+        enum CodingKeys: String, CodingKey {
+            case lastActive = "last_active"
+            case currentFocus = "current_focus"
+            case status
+        }
+    }
+    
+    struct SharedContext: Codable {
+        let communicationSystem: String
+        let messageLog: String
+        let stateFile: String
+        let archiveDir: String
+        let joshSystem: String
+        let bridgeLegacy: String
+        
+        enum CodingKeys: String, CodingKey {
+            case communicationSystem = "communication_system"
+            case messageLog = "message_log"
+            case stateFile = "state_file"
+            case archiveDir = "archive_dir"
+            case joshSystem = "josh_system"
+            case bridgeLegacy = "bridge_legacy"
+        }
+    }
+}
+
 // MARK: - App State
 enum AppTab: String {
-    case notes
-    case clipboard
-    case screenshots
+    case tasks
     case agents
-    case activity
+    case vault
+    case context
 }
 

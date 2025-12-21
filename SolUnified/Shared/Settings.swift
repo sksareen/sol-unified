@@ -12,18 +12,39 @@ import AppKit
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
-    @Published var windowWidth: CGFloat {
+    @Published var windowWidthPercent: CGFloat {
         didSet {
-            UserDefaults.standard.set(windowWidth, forKey: "windowWidth")
-            InternalAppTracker.shared.trackSettingChange(key: "windowWidth", value: "\(Int(windowWidth))")
+            UserDefaults.standard.set(windowWidthPercent, forKey: "windowWidthPercent")
+            InternalAppTracker.shared.trackSettingChange(key: "windowWidthPercent", value: "\(Int(windowWidthPercent))")
         }
     }
     
-    @Published var windowHeight: CGFloat {
+    @Published var windowHeightPercent: CGFloat {
         didSet {
-            UserDefaults.standard.set(windowHeight, forKey: "windowHeight")
-            InternalAppTracker.shared.trackSettingChange(key: "windowHeight", value: "\(Int(windowHeight))")
+            UserDefaults.standard.set(windowHeightPercent, forKey: "windowHeightPercent")
+            InternalAppTracker.shared.trackSettingChange(key: "windowHeightPercent", value: "\(Int(windowHeightPercent))")
         }
+    }
+    
+    func increaseWindowSize() {
+        windowWidthPercent = min(windowWidthPercent + 5, 100)
+        windowHeightPercent = min(windowHeightPercent + 5, 100)
+    }
+    
+    func decreaseWindowSize() {
+        windowWidthPercent = max(windowWidthPercent - 5, 10)
+        windowHeightPercent = max(windowHeightPercent - 5, 10)
+    }
+    
+    // Computed properties for actual pixel values
+    var windowWidth: CGFloat {
+        guard let screen = NSScreen.main else { return 800 }
+        return screen.frame.width * (windowWidthPercent / 100.0)
+    }
+    
+    var windowHeight: CGFloat {
+        guard let screen = NSScreen.main else { return 600 }
+        return screen.frame.height * (windowHeightPercent / 100.0)
     }
     
     @Published var isDarkMode: Bool {
@@ -88,8 +109,8 @@ class AppSettings: ObservableObject {
     @Published var showSettings: Bool = false
     
     private init() {
-        self.windowWidth = UserDefaults.standard.object(forKey: "windowWidth") as? CGFloat ?? 800
-        self.windowHeight = UserDefaults.standard.object(forKey: "windowHeight") as? CGFloat ?? 600
+        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 50.0
+        self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 70.0
         self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? false
         
         // Default screenshots directory - expand tilde
@@ -103,8 +124,8 @@ class AppSettings: ObservableObject {
     }
     
     func resetToDefaults() {
-        windowWidth = 800
-        windowHeight = 600
+        windowWidthPercent = 50.0
+        windowHeightPercent = 70.0
         isDarkMode = false
         screenshotsDirectory = NSHomeDirectory() + "/Pictures/Pics/Screenshots"
     }
@@ -113,307 +134,321 @@ class AppSettings: ObservableObject {
 struct SettingsView: View {
     @ObservedObject var settings = AppSettings.shared
     @Environment(\.dismiss) var dismiss
+    @State private var selectedTab: SettingsTab = .general
     
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("SETTINGS")
-                    .font(.system(size: Typography.headingSize, weight: .semibold))
-                    .foregroundColor(Color.brutalistTextPrimary)
-                
-                Spacer()
-                
-                Button("Reset") {
-                    settings.resetToDefaults()
-                }
-                .buttonStyle(BrutalistSecondaryButtonStyle())
-                
-                Button("Done") {
-                    dismiss()
-                }
-                .buttonStyle(BrutalistPrimaryButtonStyle())
-            }
-            .padding(Spacing.lg)
-            .background(Color.brutalistBgSecondary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
-                alignment: .bottom
-            )
-            
-            // Content
-            ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.lg) {
-                    // Window Size Section
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text("WINDOW SIZE")
-                            .font(.system(size: Typography.bodySize, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
-                        
-                        // Width Slider
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            HStack {
-                                Text("Width:")
-                                    .font(.system(size: Typography.bodySize))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Spacer()
-                                
-                                Text("\(Int(settings.windowWidth))px")
-                                    .font(.system(size: Typography.bodySize, weight: .medium))
-                                    .foregroundColor(Color.brutalistTextPrimary)
-                            }
-                            
-                            Slider(value: $settings.windowWidth, in: 600...1400, step: 50)
-                                .accentColor(Color.brutalistAccent)
-                        }
-                        .padding(Spacing.md)
-                        .background(Color.brutalistBgSecondary)
-                        .cornerRadius(BorderRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                .stroke(Color.brutalistBorder, lineWidth: 1)
-                        )
-                        
-                        // Height Slider
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            HStack {
-                                Text("Height:")
-                                    .font(.system(size: Typography.bodySize))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Spacer()
-                                
-                                Text("\(Int(settings.windowHeight))px")
-                                    .font(.system(size: Typography.bodySize, weight: .medium))
-                                    .foregroundColor(Color.brutalistTextPrimary)
-                            }
-                            
-                            Slider(value: $settings.windowHeight, in: 400...1000, step: 50)
-                                .accentColor(Color.brutalistAccent)
-                        }
-                        .padding(Spacing.md)
-                        .background(Color.brutalistBgSecondary)
-                        .cornerRadius(BorderRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                .stroke(Color.brutalistBorder, lineWidth: 1)
-                        )
-                        
-                        Text("Window will resize on next show")
-                            .font(.system(size: Typography.smallSize))
-                            .foregroundColor(Color.brutalistTextMuted)
-                            .padding(.top, Spacing.xs)
-                    }
-                    .padding(Spacing.lg)
-                    .brutalistCard()
-                    
-                    // Appearance Section
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text("APPEARANCE")
-                            .font(.system(size: Typography.bodySize, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
-                        
-                        Toggle(isOn: $settings.isDarkMode) {
-                            HStack {
-                                Text("Dark Mode")
-                                    .font(.system(size: Typography.bodySize))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Spacer()
-                            }
-                        }
-                        .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
-                        .padding(Spacing.md)
-                        .background(Color.brutalistBgSecondary)
-                        .cornerRadius(BorderRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                .stroke(Color.brutalistBorder, lineWidth: 1)
-                        )
-                        
-                        Text("Changes apply immediately")
-                            .font(.system(size: Typography.smallSize))
-                            .foregroundColor(Color.brutalistTextMuted)
-                            .padding(.top, Spacing.xs)
-                    }
-                    .padding(Spacing.lg)
-                    .brutalistCard()
-                    
-                    // Screenshots Section
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text("SCREENSHOTS")
-                            .font(.system(size: Typography.bodySize, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
-                        
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            HStack {
-                                Text("Screenshot Folder:")
-                                    .font(.system(size: Typography.bodySize))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Spacer()
-                            }
-                            
-                            HStack(spacing: Spacing.sm) {
-                                Text(settings.screenshotsDirectory)
-                                    .font(.system(size: Typography.smallSize, design: .monospaced))
-                                    .foregroundColor(Color.brutalistTextPrimary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(Spacing.sm)
-                                    .background(Color.brutalistBgTertiary)
-                                    .cornerRadius(BorderRadius.sm)
-                                
-                                Button("Select...") {
-                                    let panel = NSOpenPanel()
-                                    panel.canChooseFiles = false
-                                    panel.canChooseDirectories = true
-                                    panel.allowsMultipleSelection = false
-                                    panel.canCreateDirectories = true
-                                    
-                                    if panel.runModal() == .OK {
-                                        if let url = panel.url {
-                                            settings.screenshotsDirectory = url.path
-                                        }
-                                    }
-                                }
-                                .buttonStyle(BrutalistSecondaryButtonStyle())
-                            }
-                            
-                            Text("Select the folder containing your screenshots")
-                                .font(.system(size: Typography.smallSize))
-                                .foregroundColor(Color.brutalistTextMuted)
-                                .padding(.top, Spacing.xs)
-                        }
-                        .padding(Spacing.md)
-                        .background(Color.brutalistBgSecondary)
-                        .cornerRadius(BorderRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                .stroke(Color.brutalistBorder, lineWidth: 1)
-                        )
-                    }
-                    .padding(Spacing.lg)
-                    .brutalistCard()
-                    
-                    // Activity Logging Section
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        Text("ACTIVITY LOGGING")
-                            .font(.system(size: Typography.bodySize, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
-                        
-                        Toggle(isOn: $settings.activityLoggingEnabled) {
-                            VStack(alignment: .leading, spacing: Spacing.xs) {
-                                Text("Enable Activity Logging")
-                                    .font(.system(size: Typography.bodySize))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Text("Track app usage, window titles, and system events")
-                                    .font(.system(size: Typography.smallSize))
-                                    .foregroundColor(Color.brutalistTextMuted)
-                            }
-                        }
-                        .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
-                        .padding(Spacing.md)
-                        .background(Color.brutalistBgSecondary)
-                        .cornerRadius(BorderRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                .stroke(Color.brutalistBorder, lineWidth: 1)
-                        )
-                        
-                        if settings.activityLoggingEnabled {
-                            VStack(alignment: .leading, spacing: Spacing.sm) {
-                                Text("Data Retention:")
-                                    .font(.system(size: Typography.smallSize, weight: .medium))
-                                    .foregroundColor(Color.brutalistTextSecondary)
-                                
-                                Picker("Retention", selection: $settings.activityLogRetentionDays) {
-                                    Text("30 days").tag(30)
-                                    Text("90 days").tag(90)
-                                    Text("1 year").tag(365)
-                                }
-                                .pickerStyle(SegmentedPickerStyle())
-                            }
-                            .padding(Spacing.md)
-                            .background(Color.brutalistBgSecondary)
-                            .cornerRadius(BorderRadius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                    .stroke(Color.brutalistBorder, lineWidth: 1)
-                            )
-                            
-                            // Keyboard Tracking
-                            Toggle(isOn: $settings.keyboardTrackingEnabled) {
-                                VStack(alignment: .leading, spacing: Spacing.xs) {
-                                    Text("Keyboard Tracking")
-                                        .font(.system(size: Typography.bodySize))
-                                        .foregroundColor(Color.brutalistTextSecondary)
-                                    
-                                    Text("Track keystrokes (requires Input Monitoring permission)")
-                                        .font(.system(size: Typography.smallSize))
-                                        .foregroundColor(Color.brutalistTextMuted)
-                                }
-                            }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
-                            .padding(Spacing.md)
-                            .background(Color.brutalistBgSecondary)
-                            .cornerRadius(BorderRadius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                    .stroke(Color.brutalistBorder, lineWidth: 1)
-                            )
-                            
-                            // Mouse Tracking
-                            Toggle(isOn: $settings.mouseTrackingEnabled) {
-                                VStack(alignment: .leading, spacing: Spacing.xs) {
-                                    Text("Mouse Tracking")
-                                        .font(.system(size: Typography.bodySize))
-                                        .foregroundColor(Color.brutalistTextSecondary)
-                                    
-                                    Text("Track mouse clicks, movement, and scrolling")
-                                        .font(.system(size: Typography.smallSize))
-                                        .foregroundColor(Color.brutalistTextMuted)
-                                }
-                            }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.brutalistAccent))
-                            .padding(Spacing.md)
-                            .background(Color.brutalistBgSecondary)
-                            .cornerRadius(BorderRadius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: BorderRadius.sm)
-                                    .stroke(Color.brutalistBorder, lineWidth: 1)
-                            )
-                        }
-                        
-                        Text("All data stored locally, never sent to cloud")
-                            .font(.system(size: Typography.smallSize))
-                            .foregroundColor(Color.brutalistTextMuted)
-                            .padding(.top, Spacing.xs)
-                        
-                        if settings.activityLoggingEnabled {
-                            Button(action: {
-                                ActivityStore.shared.testEvent()
-                            }) {
-                                Text("Test Event")
-                                    .font(.system(size: Typography.bodySize, weight: .medium))
-                            }
-                            .buttonStyle(BrutalistSecondaryButtonStyle())
-                            .padding(.top, Spacing.sm)
-                        }
-                    }
-                    .padding(Spacing.lg)
-                    .brutalistCard()
-                }
-                .padding(Spacing.lg)
+    enum SettingsTab: String, CaseIterable {
+        case general = "General"
+        case activity = "Activity"
+        case screenshots = "Screenshots"
+        
+        var icon: String {
+            switch self {
+            case .general: return "gearshape"
+            case .activity: return "chart.line.uptrend.xyaxis"
+            case .screenshots: return "camera.viewfinder"
             }
         }
-        .frame(width: 500, height: 600)
-        .background(Color.brutalistBgPrimary)
+    }
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Sidebar
+            VStack(spacing: 0) {
+                // Sidebar content
+                VStack(spacing: 8) {
+                    ForEach(SettingsTab.allCases, id: \.self) { tab in
+                        Button(action: {
+                            selectedTab = tab
+                        }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: tab.icon)
+                                    .font(.system(size: 16))
+                                    .frame(width: 20)
+                                Text(tab.rawValue)
+                                    .font(.system(size: 13))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .background(selectedTab == tab ? Color.accentColor.opacity(0.15) : Color.clear)
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(10)
+                
+                Spacer()
+            }
+            .frame(width: 160)
+            .background(Color(NSColor.controlBackgroundColor))
+            
+            Divider()
+            
+            // Content area
+            VStack(spacing: 0) {
+                // Toolbar with close button
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Close (Esc)")
+                    .keyboardShortcut(.escape, modifiers: [])
+                }
+                .padding(12)
+                
+                // Content
+                ScrollView {
+                    contentView
+                        .padding(20)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .background(Color(NSColor.windowBackgroundColor))
+        }
+        .frame(width: 650, height: 500)
+    }
+    
+    @ViewBuilder
+    var contentView: some View {
+        switch selectedTab {
+        case .general:
+            generalView
+        case .activity:
+            activityView
+        case .screenshots:
+            screenshotsView
+        }
+    }
+    
+    var generalView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("General")
+                .font(.system(size: 20, weight: .bold))
+            
+            Form {
+                // Appearance
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Appearance")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    Toggle("Use dark mode", isOn: $settings.isDarkMode)
+                        .toggleStyle(SwitchToggleStyle())
+                    
+                    Text("Changes apply immediately")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                
+                Divider()
+                
+                // Window Size
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Window Size")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Width:")
+                                .frame(width: 60, alignment: .leading)
+                            LogSlider(
+                                value: $settings.windowWidthPercent,
+                                range: 10...100
+                            )
+                            Text("\(Int(settings.windowWidthPercent))%")
+                                .frame(width: 40, alignment: .trailing)
+                                .font(.system(size: 12, design: .monospaced))
+                        }
+                        
+                        HStack {
+                            Text("Height:")
+                                .frame(width: 60, alignment: .leading)
+                            LogSlider(
+                                value: $settings.windowHeightPercent,
+                                range: 10...100
+                            )
+                            Text("\(Int(settings.windowHeightPercent))%")
+                                .frame(width: 40, alignment: .trailing)
+                                .font(.system(size: 12, design: .monospaced))
+                        }
+                    }
+                    
+                    Text("Window will resize on next show")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                
+                Divider()
+                
+                // Reset button
+                HStack {
+                    Button("Reset to Defaults") {
+                        settings.resetToDefaults()
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+            }
+            .formStyle(.grouped)
+            
+            Spacer()
+        }
+    }
+    
+    var activityView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Activity")
+                .font(.system(size: 20, weight: .bold))
+            
+            Form {
+                // Activity Logging Toggle
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Enable activity logging", isOn: $settings.activityLoggingEnabled)
+                        .toggleStyle(SwitchToggleStyle())
+                    
+                    Text("Track app usage, window titles, and system events")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                
+                if settings.activityLoggingEnabled {
+                    Divider()
+                    
+                    // Data Retention
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Data Retention")
+                            .font(.system(size: 13, weight: .semibold))
+                        
+                        Picker("Keep logs for:", selection: $settings.activityLogRetentionDays) {
+                            Text("30 days").tag(30)
+                            Text("90 days").tag(90)
+                            Text("1 year").tag(365)
+                        }
+                        .pickerStyle(RadioGroupPickerStyle())
+                    }
+                    .padding(.vertical, 8)
+                    
+                    Divider()
+                    
+                    // Privacy note
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "lock.shield")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text("All data is stored locally on your device and is never sent to the cloud.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                    
+                    Divider()
+                    
+                    // Test button
+                    HStack {
+                        Button("Test Event") {
+                            ActivityStore.shared.testEvent()
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+            .formStyle(.grouped)
+            
+            Spacer()
+        }
+    }
+    
+    var screenshotsView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Screenshots")
+                .font(.system(size: 20, weight: .bold))
+            
+            Form {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Screenshot Folder")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    HStack(spacing: 8) {
+                        Text(settings.screenshotsDirectory)
+                            .font(.system(size: 11, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(6)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(4)
+                        
+                        Button("Choose...") {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            panel.canCreateDirectories = true
+                            
+                            if panel.runModal() == .OK {
+                                if let url = panel.url {
+                                    settings.screenshotsDirectory = url.path
+                                }
+                            }
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    Text("Select the folder where your screenshots are stored")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            .formStyle(.grouped)
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Logarithmic Slider
+struct LogSlider: View {
+    @Binding var value: CGFloat
+    let range: ClosedRange<CGFloat>
+    
+    private var logValue: CGFloat {
+        let minLog = log(range.lowerBound)
+        let maxLog = log(range.upperBound)
+        return (log(value) - minLog) / (maxLog - minLog)
+    }
+    
+    var body: some View {
+        Slider(
+            value: Binding(
+                get: { logValue },
+                set: { newLogValue in
+                    let minLog = log(range.lowerBound)
+                    let maxLog = log(range.upperBound)
+                    let actualValue = exp(minLog + newLogValue * (maxLog - minLog))
+                    value = actualValue
+                }
+            ),
+            in: 0...1
+        )
+        .accentColor(Color.brutalistAccent)
     }
 }
 

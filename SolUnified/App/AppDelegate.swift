@@ -44,15 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Failed to register hotkey")
         }
         
-        // Setup local event monitor for Tab key (before clipboard to avoid conflicts)
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.keyCode == 48 && event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] {
-                // Tab key pressed
-                NotificationCenter.default.post(name: NSNotification.Name("CycleTab"), object: nil)
-                return nil // Consume the event
-            }
-            return event
-        }
+        // Removed Tab key cycling - using individual tab shortcuts instead
         
         // Start clipboard monitoring after a small delay to ensure app is ready
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -74,7 +66,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         print("Sol Unified started successfully")
         print("Press Option+` to show/hide the window")
-        print("Press Tab to cycle through tabs")
     }
     
     func applicationWillTerminate(_ notification: Notification) {

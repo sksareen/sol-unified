@@ -922,11 +922,10 @@ class ActivityStore: ObservableObject {
     
     private func tabTabName(_ tab: AppTab) -> String {
         switch tab {
-        case .notes: return "Notes"
-        case .clipboard: return "Clipboard"
-        case .screenshots: return "Screenshots"
+        case .tasks: return "Tasks"
         case .agents: return "Agents"
-        case .activity: return "Activity"
+        case .vault: return "Vault"
+        case .context: return "Context"
         }
     }
     
@@ -1023,11 +1022,12 @@ class ActivityStore: ObservableObject {
         
         let now = Date()
         
-        // Skip window title changes immediately after app activation (within 3 seconds)
+        // Skip window title changes immediately after app activation (within 0.5 seconds)
         // This prevents duplicate events when switching apps
+        // Reduced from 3.0 to 0.5 seconds to allow faster window toggling
         if let lastActivationTime = lastAppActivationTime,
            bundleId == lastAppActivationBundleId,
-           now.timeIntervalSince(lastActivationTime) < 3.0 {
+           now.timeIntervalSince(lastActivationTime) < 0.5 {
             log.logSkip("window change too soon", eventType: .windowTitleChange)
             return
         }

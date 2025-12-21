@@ -12,7 +12,7 @@ A native macOS app combining notes, clipboard manager, and screenshot organizer 
 - Monospaced font for editing, rendered view for preview
 - Supports headings, bold, italic, code, links, lists, quotes, strikethrough
 
-### 📋 Clipboard Manager
+### 📋 Clipboard Manager2
 - Automatically captures clipboard history (last 100 items)
 - Supports text, images, and files
 - Image thumbnails in history for visual identification
