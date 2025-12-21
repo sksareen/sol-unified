@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContextView: View {
+    @AppStorage("lastContextSection") private var lastSectionRaw: String = ContextSection.clipboard.rawValue
     @State private var selectedSection: ContextSection = .clipboard
     
     enum ContextSection: String, CaseIterable {
@@ -75,5 +76,13 @@ struct ContextView: View {
             }
         }
         .background(Color.brutalistBgPrimary)
+        .onAppear {
+            if let savedSection = ContextSection(rawValue: lastSectionRaw) {
+                selectedSection = savedSection
+            }
+        }
+        .onChange(of: selectedSection) { newSection in
+            lastSectionRaw = newSection.rawValue
+        }
     }
 }

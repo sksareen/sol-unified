@@ -31,8 +31,8 @@ class MemoryTracker: ObservableObject {
     @Published var lastCheck: Date = Date()
     @Published var recentDeltas: [DataSourceDelta] = []
     
-    private let contextPath = NSHomeDirectory() + "/Documents/sol-unified/ai_context.json"
-    private let bridgePath = NSHomeDirectory() + "/Documents/agent_bridge.json"
+    private let contextPath = "/Users/savarsareen/coding/mable/sol-unified/ai_context.json"
+    private let bridgePath = "/Users/savarsareen/coding/research/agent_bridge.json"
     private var cancellables = Set<AnyCancellable>()
     
     private let screenshotsStore = ScreenshotsStore.shared

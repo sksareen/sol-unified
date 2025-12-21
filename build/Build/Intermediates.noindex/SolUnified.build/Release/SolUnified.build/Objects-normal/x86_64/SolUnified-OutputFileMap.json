@@ -1,0 +1,236 @@
+{
+  "" : {
+    "const-values" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary.swiftconstvalues",
+    "dependencies" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary.d",
+    "diagnostics" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary.dia",
+    "emit-module-dependencies" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary-emit-module.dia",
+    "pch" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnified-primary.swiftdeps"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/App/AppDelegate.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AppDelegate.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/App/SolUnifiedApp.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnifiedApp.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnifiedApp.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SolUnifiedApp.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Core/Database.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Database.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Database.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Database.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Core/HotkeyManager.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/HotkeyManager.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/HotkeyManager.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/HotkeyManager.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Core/WindowManager.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WindowManager.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WindowManager.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WindowManager.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/ActivityLogger.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityLogger.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityLogger.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityLogger.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/ActivityMonitor.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityMonitor.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityMonitor.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityMonitor.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/ActivityStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/ActivityView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ActivityView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/IdleDetector.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/IdleDetector.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/IdleDetector.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/IdleDetector.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/InputMonitor.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InputMonitor.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InputMonitor.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InputMonitor.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/InternalAppTracker.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InternalAppTracker.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InternalAppTracker.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/InternalAppTracker.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/LiveActivityStreamView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveActivityStreamView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveActivityStreamView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveActivityStreamView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/LiveEventStreamView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveEventStreamView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveEventStreamView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/LiveEventStreamView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/StackedAreaChartView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/StackedAreaChartView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/StackedAreaChartView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/StackedAreaChartView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Activity/TimelineView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TimelineView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TimelineView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TimelineView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/AgentContextStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/AgentContextView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentContextView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/MemoryTracker.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MemoryTracker.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MemoryTracker.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MemoryTracker.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/SafeAgentComms.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SafeAgentComms.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SafeAgentComms.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/SafeAgentComms.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/Views/AgentBridgeView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentBridgeView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentBridgeView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentBridgeView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/Views/AgentConsoleView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentConsoleView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentConsoleView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/AgentConsoleView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/AgentContext/Views/MessageLogView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MessageLogView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MessageLogView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/MessageLogView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Clipboard/ClipboardMonitor.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardMonitor.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardMonitor.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardMonitor.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Clipboard/ClipboardStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Clipboard/ClipboardView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ClipboardView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Context/ContextView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ContextView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ContextView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ContextView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/NotesListView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesListView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesListView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesListView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/NotesStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/NotesView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/NotesView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/ScratchpadView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScratchpadView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScratchpadView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScratchpadView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/VaultFileBrowser.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultFileBrowser.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultFileBrowser.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultFileBrowser.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/VaultView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/VaultView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Notes/WYSIWYGMarkdownEditor.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WYSIWYGMarkdownEditor.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WYSIWYGMarkdownEditor.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/WYSIWYGMarkdownEditor.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Screenshots/ScreenshotAnalyzer.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotAnalyzer.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotAnalyzer.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotAnalyzer.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Screenshots/ScreenshotScanner.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotScanner.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotScanner.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotScanner.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Screenshots/ScreenshotsStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Screenshots/ScreenshotsView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/ScreenshotsView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Tasks/TasksStore.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksStore.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksStore.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksStore.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Tasks/TasksView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TasksView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Features/Terminal/TerminalView.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TerminalView.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TerminalView.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TerminalView.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Shared/BrutalistStyles.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/BrutalistStyles.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/BrutalistStyles.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/BrutalistStyles.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Shared/Models.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Models.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Models.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Models.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Shared/Settings.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Settings.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Settings.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/Settings.o"
+  },
+  "/Users/savarsareen/coding/mable/sol-unified/SolUnified/Shared/TabNavigator.swift" : {
+    "index-unit-output-path" : "/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TabNavigator.o",
+    "llvm-bc" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TabNavigator.bc",
+    "object" : "/Users/savarsareen/coding/mable/sol-unified/build/Build/Intermediates.noindex/SolUnified.build/Release/SolUnified.build/Objects-normal/x86_64/TabNavigator.o"
+  }
+}

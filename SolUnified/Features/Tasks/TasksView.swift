@@ -3,6 +3,8 @@ import SwiftUI
 struct TasksView: View {
     @StateObject private var store = TasksStore()
     @State private var selectedTask: AgentTask?
+    @State private var newTaskTitle = ""
+    @State private var isAddingTask = false
     
     var sortedTasks: [AgentTask] {
         store.tasks.sorted { task1, task2 in
@@ -24,54 +26,100 @@ struct TasksView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("TASKS")
-                    .font(.system(size: 14, weight: .bold))
-                    .tracking(1.0)
+            HStack(spacing: 12) {
+                Text("Tasks")
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundColor(Color.brutalistTextPrimary)
                 
                 Spacer()
                 
-                Text("\(store.tasks.count) tasks")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color.brutalistTextSecondary)
-                
                 if store.isSaving {
                     ProgressView()
-                        .scaleEffect(0.7)
-                        .padding(.leading, 8)
+                        .scaleEffect(0.6)
+                        .frame(width: 12, height: 12)
                 }
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isAddingTask = true
+                    }
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(Color.brutalistAccent)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .padding(16)
-            .background(Color.brutalistBgSecondary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
-                alignment: .bottom
-            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            
+            if isAddingTask {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "circle")
+                            .font(.system(size: 18, weight: .light))
+                            .foregroundColor(Color.brutalistTextMuted)
+                        
+                        TextField("New Task", text: $newTaskTitle)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.brutalistTextPrimary)
+                            .onSubmit {
+                                if !newTaskTitle.isEmpty {
+                                    store.addTask(title: newTaskTitle)
+                                    newTaskTitle = ""
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        isAddingTask = false
+                                    }
+                                }
+                            }
+                        
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                newTaskTitle = ""
+                                isAddingTask = false
+                            }
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color.brutalistTextMuted)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.brutalistBgSecondary)
+                    
+                    Divider()
+                        .background(Color.brutalistBorder)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
             
             if store.tasks.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 48))
-                        .foregroundColor(Color.brutalistTextSecondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 56, weight: .thin))
+                        .foregroundColor(Color.brutalistTextMuted)
                     
-                    Text("No tasks")
-                        .font(.system(size: 14, weight: .medium))
+                    Text("No Tasks")
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(Color.brutalistTextSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 1) {
+                    LazyVStack(spacing: 0) {
                         ForEach(sortedTasks) { task in
                             TaskRow(task: task, store: store, isSelected: selectedTask?.id == task.id)
                                 .onTapGesture {
-                                    selectedTask = task
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                        selectedTask = selectedTask?.id == task.id ? nil : task
+                                    }
                                 }
                         }
                     }
+                    .padding(.vertical, 8)
                 }
             }
         }
@@ -83,108 +131,114 @@ struct TaskRow: View {
     let task: AgentTask
     @ObservedObject var store: TasksStore
     let isSelected: Bool
-    @State private var isExpanded: Bool = false
-    
-    var priorityColor: Color {
-        switch task.priority {
-        case "critical": return .red
-        case "high": return .orange
-        case "medium": return .yellow
-        case "low": return .gray
-        default: return .gray
-        }
-    }
+    @State private var isHovered = false
     
     var statusColor: Color {
         switch task.status {
-        case "completed": return .green
-        case "in_progress": return .blue
-        case "blocked": return .red
-        default: return .gray
+        case "completed": return Color(hex: "#34C759")
+        case "in_progress": return Color.brutalistAccent
+        case "blocked": return Color(hex: "#FF3B30")
+        default: return Color.brutalistTextMuted
+        }
+    }
+    
+    var priorityColor: Color {
+        switch task.priority {
+        case "critical": return Color(hex: "#FF3B30")
+        case "high": return Color(hex: "#FF9500")
+        case "medium": return Color(hex: "#FFCC00")
+        case "low": return Color.brutalistTextMuted
+        default: return Color.brutalistTextMuted
         }
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 6)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(task.title)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color.brutalistTextPrimary)
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                Button(action: {
+                    let newStatus = task.status == "completed" ? "pending" : "completed"
+                    store.updateTask(taskId: task.id, assignedTo: nil, status: newStatus)
+                }) {
+                    ZStack {
+                        Circle()
+                            .stroke(statusColor, lineWidth: 1.5)
+                            .frame(width: 20, height: 20)
                         
-                        Spacer()
-                        
-                        Rectangle()
-                            .fill(priorityColor)
-                            .frame(width: 3, height: 14)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        AgentPicker(
-                            selectedAgent: task.assignedTo,
-                            availableAgents: store.availableAgents,
-                            onChange: { newAgent in
-                                store.updateTask(taskId: task.id, assignedTo: newAgent, status: nil)
-                            }
-                        )
-                        
-                        StatusPicker(
-                            selectedStatus: task.status,
-                            availableStatuses: store.availableStatuses,
-                            onChange: { newStatus in
-                                store.updateTask(taskId: task.id, assignedTo: nil, status: newStatus)
-                            }
-                        )
-                        
-                        Spacer()
-                        
-                        Text(task.project.uppercased())
-                            .font(.system(size: 9, weight: .bold))
-                            .tracking(0.5)
-                            .foregroundColor(Color.brutalistTextSecondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.brutalistBgTertiary)
-                    }
-                    
-                    if isExpanded {
-                        Text(task.description)
-                            .font(.system(size: 11))
-                            .foregroundColor(Color.brutalistTextSecondary)
-                            .padding(.top, 4)
-                    }
-                    
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            isExpanded.toggle()
+                        if task.status == "completed" {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(statusColor)
+                        } else if task.status == "in_progress" {
+                            Circle()
+                                .fill(statusColor)
+                                .frame(width: 10, height: 10)
                         }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 9, weight: .semibold))
-                            Text(isExpanded ? "Less" : "More")
-                                .font(.system(size: 9, weight: .semibold))
-                                .tracking(0.5)
-                        }
-                        .foregroundColor(Color.brutalistTextSecondary)
-                        .padding(.top, 4)
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.vertical, 12)
+                .buttonStyle(PlainButtonStyle())
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title)
+                        .font(.system(size: 14))
+                        .foregroundColor(task.status == "completed" ? Color.brutalistTextMuted : Color.brutalistTextPrimary)
+                        .strikethrough(task.status == "completed", color: Color.brutalistTextMuted)
+                    
+                    if isSelected {
+                        Text(task.description)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color.brutalistTextSecondary)
+                            .padding(.top, 2)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        
+                        HStack(spacing: 8) {
+                            Text(task.project)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.brutalistTextMuted)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.brutalistBgTertiary)
+                                .cornerRadius(6)
+                        }
+                        .padding(.top, 6)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    StatusPicker(
+                        selectedStatus: task.status,
+                        availableStatuses: store.availableStatuses,
+                        onChange: { newStatus in
+                            store.updateTask(taskId: task.id, assignedTo: nil, status: newStatus)
+                        }
+                    )
+                    
+                    AgentPicker(
+                        selectedAgent: task.assignedTo,
+                        availableAgents: store.availableAgents,
+                        onChange: { newAgent in
+                            store.updateTask(taskId: task.id, assignedTo: newAgent, status: nil)
+                        }
+                    )
+                }
+                
+                Circle()
+                    .fill(priorityColor)
+                    .frame(width: 6, height: 6)
             }
-            .padding(.horizontal, 16)
-            .background(isSelected ? Color.brutalistBgTertiary : Color.brutalistBgSecondary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(isSelected ? Color.brutalistBgSecondary : Color.clear)
+            .contentShape(Rectangle())
             
-            Rectangle()
-                .fill(Color.brutalistBorder)
-                .frame(height: 1)
+            Divider()
+                .background(Color.brutalistBorder)
+                .padding(.leading, 52)
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
@@ -194,28 +248,37 @@ struct AgentPicker: View {
     let availableAgents: [String]
     let onChange: (String) -> Void
     
+    var agentColor: Color {
+        switch selectedAgent {
+        case "devon": return Color(hex: "#FF3B30")
+        case "josh": return Color(hex: "#0A84FF")
+        case "gunter": return Color(hex: "#34C759")
+        case "kevin": return Color(hex: "#FF9500")
+        case "mable": return Color(hex: "#AF52DE")
+        default: return Color.brutalistTextMuted
+        }
+    }
+    
     var body: some View {
         Menu {
             ForEach(availableAgents, id: \.self) { agent in
-                Button(agent.uppercased()) {
+                Button(agent.capitalized) {
                     onChange(agent)
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 10))
-                Text(selectedAgent.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(0.3)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8))
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(agentColor)
+                    .frame(width: 8, height: 8)
+                Text(selectedAgent.capitalized)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color.brutalistTextSecondary)
             }
-            .foregroundColor(Color.brutalistTextPrimary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
             .background(Color.brutalistBgTertiary)
-            .cornerRadius(4)
+            .cornerRadius(12)
         }
         .menuStyle(BorderlessButtonMenuStyle())
     }
@@ -228,35 +291,43 @@ struct StatusPicker: View {
     
     var statusDisplay: String {
         switch selectedStatus {
-        case "in_progress": return "IN PROGRESS"
-        default: return selectedStatus.uppercased()
+        case "in_progress": return "In Progress"
+        case "pending": return "Pending"
+        case "completed": return "Completed"
+        case "blocked": return "Blocked"
+        case "archived": return "Archived"
+        default: return selectedStatus.capitalized
+        }
+    }
+    
+    var statusIcon: String {
+        switch selectedStatus {
+        case "in_progress": return "circle.fill"
+        case "completed": return "checkmark.circle.fill"
+        case "blocked": return "exclamationmark.circle.fill"
+        default: return "circle"
         }
     }
     
     var body: some View {
         Menu {
             ForEach(availableStatuses, id: \.self) { status in
-                Button(status.uppercased().replacingOccurrences(of: "_", with: " ")) {
+                Button(status.replacingOccurrences(of: "_", with: " ").capitalized) {
                     onChange(status)
                 }
             }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: statusIcon)
+                    .font(.system(size: 10, weight: .medium))
                 Text(statusDisplay)
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(0.3)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8))
+                    .font(.system(size: 11, weight: .medium))
             }
-            .foregroundColor(Color.brutalistTextPrimary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.brutalistBgPrimary)
-            .cornerRadius(4)
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.brutalistBorder, lineWidth: 1)
-            )
+            .foregroundColor(Color.brutalistTextSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.brutalistBgTertiary)
+            .cornerRadius(12)
         }
         .menuStyle(BorderlessButtonMenuStyle())
     }

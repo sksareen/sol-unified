@@ -2,148 +2,193 @@ import SwiftUI
 
 struct AgentContextView: View {
     @StateObject private var store = AgentContextStore()
+    @State private var selectedAgent: String?
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Bar: All 5 Agents
-            HStack(spacing: 0) {
-                if let state = store.agentState {
-                    // Mable
-                    if let mable = state.active_agents["mable"] {
-                        CompactAgentStatus(
-                            name: "MABLE",
-                            role: "Orchestrator",
-                            color: Color(hex: "EC4899"),
-                            status: mable
-                        )
-                    }
-                    
-                    // Devon
-                    if let devon = state.active_agents["devon"] {
-                        CompactAgentStatus(
-                            name: "DEVON",
-                            role: "Product",
-                            color: Color(hex: "F97316"),
-                            status: devon
-                        )
-                    }
-                    
-                    // Josh
-                    if let josh = state.active_agents["josh"] {
-                        CompactAgentStatus(
-                            name: "JOSH",
-                            role: "CEO",
-                            color: Color(hex: "10B981"),
-                            status: josh
-                        )
-                    }
-                    
-                    // Gunter
-                    if let gunter = state.active_agents["gunter"] {
-                        CompactAgentStatus(
-                            name: "GUNTER",
-                            role: "Research",
-                            color: Color(hex: "3B82F6"),
-                            status: gunter
-                        )
-                    }
-                    
-                    // Kevin
-                    if let kevin = state.active_agents["kevin"] {
-                        CompactAgentStatus(
-                            name: "KEVIN",
-                            role: "AI/ML",
-                            color: Color(hex: "8B5CF6"),
-                            status: kevin
-                        )
-                    }
-                } else {
-                    Text("Loading agents...")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity)
+            HStack(spacing: 12) {
+                Text("Agents")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(Color.brutalistTextPrimary)
+                
+                Spacer()
+                
+                if store.isSyncing {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 12, height: 12)
                 }
                 
-                // Sync Control
                 Button(action: { store.forceSync() }) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 14, weight: .semibold))
-                            .rotationEffect(.degrees(store.isSyncing ? 360 : 0))
-                            .animation(store.isSyncing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: store.isSyncing)
-                        
-                        if !store.isSyncing {
-                            Text(formatTime(store.lastUpdated))
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.secondary.opacity(0.6))
-                        }
-                    }
-                    .foregroundColor(store.isSyncing ? Color.brutalistAccent : .secondary)
-                    .frame(width: 50)
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(Color.brutalistAccent)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .padding(.horizontal, 8)
             }
-            .padding(.horizontal, 16)
-            .frame(height: 72)
-            .background(
-                VisualEffectView(material: .contentBackground, blendingMode: .withinWindow)
-            )
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
-                alignment: .bottom
-            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             
-            // Main Content: Message Log
-            MessageLogView(messages: store.messages)
-                .frame(maxHeight: .infinity)
-            
-            // Bottom Bar: Stats
-            HStack(spacing: 16) {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.6))
-                    Text("Last sync: \(formatTime(store.lastUpdated))")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+            VSplitView {
+                // Agent List
+                if let state = store.agentState {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            if let mable = state.active_agents["mable"] {
+                                AgentRow(name: "Mable", role: "Orchestrator", color: Color(hex: "EC4899"), status: mable, store: store, isSelected: selectedAgent == "mable")
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            selectedAgent = selectedAgent == "mable" ? nil : "mable"
+                                        }
+                                    }
+                            }
+                            if let devon = state.active_agents["devon"] {
+                                AgentRow(name: "Devon", role: "Product", color: Color(hex: "F97316"), status: devon, store: store, isSelected: selectedAgent == "devon")
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            selectedAgent = selectedAgent == "devon" ? nil : "devon"
+                                        }
+                                    }
+                            }
+                            if let josh = state.active_agents["josh"] {
+                                AgentRow(name: "Josh", role: "CEO", color: Color(hex: "10B981"), status: josh, store: store, isSelected: selectedAgent == "josh")
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            selectedAgent = selectedAgent == "josh" ? nil : "josh"
+                                        }
+                                    }
+                            }
+                            if let gunter = state.active_agents["gunter"] {
+                                AgentRow(name: "Gunter", role: "Research", color: Color(hex: "3B82F6"), status: gunter, store: store, isSelected: selectedAgent == "gunter")
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            selectedAgent = selectedAgent == "gunter" ? nil : "gunter"
+                                        }
+                                    }
+                            }
+                            if let kevin = state.active_agents["kevin"] {
+                                AgentRow(name: "Kevin", role: "AI/ML", color: Color(hex: "8B5CF6"), status: kevin, store: store, isSelected: selectedAgent == "kevin")
+                                    .onTapGesture {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            selectedAgent = selectedAgent == "kevin" ? nil : "kevin"
+                                        }
+                                    }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .frame(minHeight: 200)
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading agents...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color.brutalistTextSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minHeight: 200)
                 }
                 
-                HStack(spacing: 6) {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.6))
-                    Text("\(store.messages.count) messages")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                MessageLogView(messages: store.messages)
+                    .frame(minHeight: 200)
+            }
+        }
+        .background(Color.brutalistBgPrimary)
+    }
+}
+
+struct AgentRow: View {
+    let name: String
+    let role: String
+    let color: Color
+    let status: AgentStatus
+    @ObservedObject var store: AgentContextStore
+    let isSelected: Bool
+    @State private var isHovered = false
+    
+    var statusColor: Color {
+        switch status.status.lowercased() {
+        case "active": return Color(hex: "#34C759")
+        case "standby": return Color(hex: "#FFCC00")
+        case "offline": return Color.brutalistTextMuted
+        default: return Color.brutalistTextMuted
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 20, height: 20)
+                    
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 10, height: 10)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(name)
+                        .font(.system(size: 14))
+                        .foregroundColor(Color.brutalistTextPrimary)
+                    
+                    if isSelected {
+                        Text(status.current_focus)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color.brutalistTextSecondary)
+                            .padding(.top, 2)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        
+                        HStack(spacing: 8) {
+                            Text(role)
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.brutalistTextMuted)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.brutalistBgTertiary)
+                                .cornerRadius(6)
+                            
+                            Text("Updated: \(formatTime(store.lastUpdated))")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.brutalistTextMuted)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.brutalistBgTertiary)
+                                .cornerRadius(6)
+                        }
+                        .padding(.top, 6)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
                 
                 Spacer()
                 
-                Button(action: { store.refreshMemory() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "brain.head.profile")
-                            .font(.system(size: 12))
-                        Text("Update Memory")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(Color.brutalistAccent)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
+                    Text(status.status.capitalized)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.brutalistTextSecondary)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.brutalistBgTertiary)
+                .cornerRadius(12)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 20)
             .padding(.vertical, 10)
-            .background(
-                VisualEffectView(material: .contentBackground, blendingMode: .withinWindow)
-            )
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color.brutalistBorder),
-                alignment: .top
-            )
+            .background(isSelected ? Color.brutalistBgSecondary : Color.clear)
+            .contentShape(Rectangle())
+            
+            Divider()
+                .background(Color.brutalistBorder)
+                .padding(.leading, 52)
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
     
@@ -151,71 +196,6 @@ struct AgentContextView: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
-    }
-}
-
-struct CompactAgentStatus: View {
-    let name: String
-    let role: String
-    let color: Color
-    let status: AgentStatus
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 28, height: 28)
-                
-                // Status indicator
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.brutalistBgPrimary, lineWidth: 1.5)
-                    )
-                    .offset(x: 9, y: 9)
-                
-                Text(String(name.prefix(1)))
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(color)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
-                    Text(name)
-                        .font(.system(size: 10, weight: .black))
-                        .tracking(0.3)
-                    
-                    Text(status.status.uppercased())
-                        .font(.system(size: 7, weight: .bold))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.brutalistBgTertiary)
-                        .cornerRadius(2)
-                        .foregroundColor(.secondary.opacity(0.8))
-                }
-                
-                Text(status.current_focus)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.7))
-                    .lineLimit(1)
-            }
-            
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 8)
-    }
-    
-    private var statusColor: Color {
-        switch status.status.lowercased() {
-        case "active": return Color.green
-        case "standby": return Color.yellow
-        case "offline": return Color.secondary
-        default: return Color.secondary
-        }
     }
 }
 

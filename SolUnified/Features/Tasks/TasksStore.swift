@@ -6,7 +6,7 @@ class TasksStore: ObservableObject {
     @Published var lastUpdated: Date = Date()
     @Published var isSaving: Bool = false
     
-    private let statePath = NSHomeDirectory() + "/Documents/agent_state.json"
+    private let statePath = "/Users/savarsareen/coding/mable/agent_state.json"
     private var stateMonitor: DispatchSourceFileSystemObject?
     
     let availableAgents = ["devon", "josh", "gunter", "kevin", "mable"]
@@ -74,6 +74,23 @@ class TasksStore: ObservableObject {
         } catch {
             print("Error loading tasks: \(error)")
         }
+    }
+    
+    func addTask(title: String, description: String = "", priority: String = "medium", project: String = "general") {
+        let newTask = AgentTask(
+            id: UUID().uuidString,
+            title: title,
+            description: description,
+            assignedTo: "mable",
+            status: "pending",
+            priority: priority,
+            createdAt: Date(),
+            updatedAt: Date(),
+            project: project
+        )
+        
+        tasks.insert(newTask, at: 0)
+        saveToFile()
     }
     
     func updateTask(taskId: String, assignedTo: String?, status: String?) {

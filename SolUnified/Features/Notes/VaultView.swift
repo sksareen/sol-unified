@@ -21,7 +21,7 @@ struct VaultView: View {
     var body: some View {
         HStack(spacing: 0) {
             VaultFileBrowser(
-                vaultPath: NSHomeDirectory() + "/Documents",
+                vaultPath: "/Users/savarsareen/coding/mable",
                 selectedFile: $state.selectedFile
             )
             

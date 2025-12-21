@@ -107,6 +107,11 @@ struct TabNavigator: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.brutalistBgPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: BorderRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: BorderRadius.md)
+                .stroke(Color.brutalistBorder, lineWidth: 1)
+        )
         .sheet(isPresented: $settings.showSettings, onDismiss: {
             // Track settings close
             InternalAppTracker.shared.trackSettingsClose()

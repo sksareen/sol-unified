@@ -12,10 +12,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowManager: WindowManager?
     var hotkeyManager = HotkeyManager.shared
     var memoryTracker = MemoryTracker.shared
+    var statusItem: NSStatusItem?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (app is menu bar only with hotkey)
         NSApp.setActivationPolicy(.accessory)
+        
+        // Create menu bar icon
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "Sol-Unified")
+            button.action = #selector(toggleWindow)
+            button.target = self
+        }
+        
+        // Create menu for status item
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Show/Hide (⌥`)", action: #selector(toggleWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        statusItem?.menu = menu
         
         // Initialize database
         if !Database.shared.initialize() {
@@ -66,6 +82,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         print("Sol Unified started successfully")
         print("Press Option+` to show/hide the window")
+    }
+    
+    @objc func toggleWindow() {
+        WindowManager.shared.toggleWindow()
     }
     
     func applicationWillTerminate(_ notification: Notification) {

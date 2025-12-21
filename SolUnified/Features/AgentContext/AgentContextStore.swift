@@ -63,8 +63,8 @@ class AgentContextStore: ObservableObject {
     @Published var lastUpdated: Date = Date()
     @Published var isSyncing: Bool = false
     
-    private let statePath = NSHomeDirectory() + "/Documents/agent_state.json"
-    private let messagesPath = NSHomeDirectory() + "/Documents/agent_messages.log"
+    private let statePath = "/Users/savarsareen/coding/mable/agent_state.json"
+    private let messagesPath = "/Users/savarsareen/coding/mable/agent_messages.log"
     
     private var stateMonitor: DispatchSourceFileSystemObject?
     private var messagesMonitor: DispatchSourceFileSystemObject?
