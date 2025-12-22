@@ -22,20 +22,22 @@ struct TabNavigator: View {
             
             // Tab Bar - Nordic Minimalist Style
             HStack(spacing: 0) {
-                TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
-                    .keyboardShortcut("1", modifiers: .command)
-                
-                TabButton(title: "Agents", tab: .agents, selectedTab: $selectedTab)
-                    .keyboardShortcut("2", modifiers: .command)
+            TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
+                .keyboardShortcut("1", modifiers: .command)
+            
+            /*
+            TabButton(title: "Agents", tab: .agents, selectedTab: $selectedTab)
+                //.keyboardShortcut("2", modifiers: .command)
+            */
 
-                TabButton(title: "Vault", tab: .vault, selectedTab: $selectedTab)
-                    .keyboardShortcut("3", modifiers: .command)
-                
-                TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
-                    .keyboardShortcut("4", modifiers: .command)
-                
-                TabButton(title: "Terminal", tab: .terminal, selectedTab: $selectedTab)
-                    .keyboardShortcut("5", modifiers: .command)
+            TabButton(title: "Vault", tab: .vault, selectedTab: $selectedTab)
+                .keyboardShortcut("2", modifiers: .command)
+            
+            TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
+                .keyboardShortcut("3", modifiers: .command)
+            
+            TabButton(title: "Terminal", tab: .terminal, selectedTab: $selectedTab)
+                .keyboardShortcut("4", modifiers: .command)
                 
                 Button(action: {
                     NotificationCenter.default.post(name: NSNotification.Name("FocusVaultSearch"), object: nil)

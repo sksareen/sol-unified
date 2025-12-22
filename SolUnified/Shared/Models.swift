@@ -360,13 +360,13 @@ struct TimelineBucket: Identifiable {
 struct AgentTask: Identifiable, Codable {
     let id: String
     let title: String
-    let description: String
+    var description: String
     var assignedTo: String
     var status: String
     let priority: String
     let createdAt: Date
     var updatedAt: Date
-    let project: String
+    var project: String
     
     init(id: String, title: String, description: String, assignedTo: String, status: String, priority: String, createdAt: Date, updatedAt: Date, project: String) {
         self.id = id

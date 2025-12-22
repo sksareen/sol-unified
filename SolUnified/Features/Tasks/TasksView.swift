@@ -142,14 +142,16 @@ struct TaskRow: View {
         }
     }
     
-    var priorityColor: Color {
-        switch task.priority {
-        case "critical": return Color(hex: "#FF3B30")
-        case "high": return Color(hex: "#FF9500")
-        case "medium": return Color(hex: "#FFCC00")
-        case "low": return Color.brutalistTextMuted
-        default: return Color.brutalistTextMuted
-        }
+    var categoryColor: Color {
+        stringToColor(task.project)
+    }
+    
+    func stringToColor(_ string: String) -> Color {
+        let hash = abs(string.hashValue)
+        let colors: [Color] = [
+            .blue, .green, .orange, .purple, .pink, .yellow, .red, .teal, .indigo
+        ]
+        return colors[hash % colors.count]
     }
     
     var body: some View {
@@ -157,7 +159,7 @@ struct TaskRow: View {
             HStack(alignment: .center, spacing: 12) {
                 Button(action: {
                     let newStatus = task.status == "completed" ? "pending" : "completed"
-                    store.updateTask(taskId: task.id, assignedTo: nil, status: newStatus)
+                    store.updateTask(taskId: task.id, status: newStatus)
                 }) {
                     ZStack {
                         Circle()
@@ -178,26 +180,44 @@ struct TaskRow: View {
                 .buttonStyle(PlainButtonStyle())
                 
                 VStack(alignment: .leading, spacing: 4) {
+                    TextField("Title", text: Binding(
+                        get: { task.title },
+                        set: { _ in } // Title editing not requested/implemented fully yet, keeping mostly read-only feel but could add if needed
+                    ))
+                    .disabled(true) // User didn't explicitly ask for title edit, keeping safe. But description/project yes.
+                    // Actually, let's keep title as Text for now to avoid accidental edits if not requested.
+                    // Reverting title to Text.
+                    
                     Text(task.title)
                         .font(.system(size: 14))
                         .foregroundColor(task.status == "completed" ? Color.brutalistTextMuted : Color.brutalistTextPrimary)
                         .strikethrough(task.status == "completed", color: Color.brutalistTextMuted)
                     
                     if isSelected {
-                        Text(task.description)
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.brutalistTextSecondary)
-                            .padding(.top, 2)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        // Editable Description
+                        TextField("Description", text: Binding(
+                            get: { task.description },
+                            set: { newVal in store.updateTask(taskId: task.id, description: newVal) }
+                        ))
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.brutalistTextSecondary)
+                        .padding(.top, 2)
                         
                         HStack(spacing: 8) {
-                            Text(task.project)
-                                .font(.system(size: 11))
-                                .foregroundColor(Color.brutalistTextMuted)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.brutalistBgTertiary)
-                                .cornerRadius(6)
+                            // Editable Project/Category
+                            TextField("Project", text: Binding(
+                                get: { task.project },
+                                set: { newVal in store.updateTask(taskId: task.id, project: newVal) }
+                            ))
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 11))
+                            .foregroundColor(categoryColor) // Match color
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(categoryColor.opacity(0.1))
+                            .cornerRadius(6)
+                            .frame(width: 100) // Limit width
                         }
                         .padding(.top, 6)
                         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -211,7 +231,7 @@ struct TaskRow: View {
                         selectedStatus: task.status,
                         availableStatuses: store.availableStatuses,
                         onChange: { newStatus in
-                            store.updateTask(taskId: task.id, assignedTo: nil, status: newStatus)
+                            store.updateTask(taskId: task.id, status: newStatus)
                         }
                     )
                     
@@ -219,13 +239,14 @@ struct TaskRow: View {
                         selectedAgent: task.assignedTo,
                         availableAgents: store.availableAgents,
                         onChange: { newAgent in
-                            store.updateTask(taskId: task.id, assignedTo: newAgent, status: nil)
+                            store.updateTask(taskId: task.id, assignedTo: newAgent)
                         }
                     )
                 }
                 
+                // Color dot matches category
                 Circle()
-                    .fill(priorityColor)
+                    .fill(categoryColor)
                     .frame(width: 6, height: 6)
             }
             .padding(.horizontal, 20)

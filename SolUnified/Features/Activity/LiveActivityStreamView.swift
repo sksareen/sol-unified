@@ -43,6 +43,67 @@ struct LiveActivityStreamView: View {
             
             ScrollView {
                 VStack(spacing: Spacing.sm) {
+                    
+                    // BRAIN PULSE (Real-time Neural State)
+                    if let state = ValueComputer.shared.lastState {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("BRAIN PULSE")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.brutalistTextMuted)
+                                Spacer()
+                                Text(state.context.uppercased())
+                                    .font(.system(size: 10, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.brutalistBgSecondary)
+                                    .cornerRadius(4)
+                            }
+                            
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("FOCUS")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.brutalistTextSecondary)
+                                    GeometryReader { g in
+                                        ZStack(alignment: .leading) {
+                                            Rectangle().fill(Color.brutalistBgSecondary)
+                                            Rectangle()
+                                                .fill(Color.green)
+                                                .frame(width: g.size.width * state.focus)
+                                        }
+                                    }
+                                    .frame(height: 4)
+                                    .cornerRadius(2)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("VELOCITY")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.brutalistTextSecondary)
+                                    GeometryReader { g in
+                                        ZStack(alignment: .leading) {
+                                            Rectangle().fill(Color.brutalistBgSecondary)
+                                            Rectangle()
+                                                .fill(Color.blue)
+                                                .frame(width: g.size.width * state.velocity)
+                                        }
+                                    }
+                                    .frame(height: 4)
+                                    .cornerRadius(2)
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(Color.brutalistBgTertiary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.brutalistBorder, lineWidth: 1)
+                        )
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.top, Spacing.sm)
+                    }
+                    
                     // Current Activity (with animated progress bar)
                     if let current = store.currentSession {
                         CurrentActivityCard(session: current)

@@ -38,7 +38,7 @@ struct VaultView: View {
             }) {
                 EmptyView()
             }
-            .keyboardShortcut("b", modifiers: .command)
+            .keyboardShortcut("b", modifiers: [.command, .shift])
             .opacity(0)
             .allowsHitTesting(false)
         )

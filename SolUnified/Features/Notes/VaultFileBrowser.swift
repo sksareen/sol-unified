@@ -127,20 +127,29 @@ struct VaultFileBrowser: View {
                 .background(Color.brutalistBgPrimary)
             }
             
-            // Collapse/Expand button
+            // Collapse/Expand button - Full Height
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     filesStore.isCollapsed.toggle()
                 }
             }) {
-                Image(systemName: filesStore.isCollapsed ? "sidebar.left" : "sidebar.left.slash")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.brutalistTextSecondary)
-                    .frame(width: 24, height: 24)
-                    .background(Color.brutalistBgSecondary)
+                ZStack {
+                    Color.brutalistBgSecondary
+                    
+                    VStack {
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.brutalistTextSecondary)
+                            .rotationEffect(.degrees(filesStore.isCollapsed ? 0 : 180))
+                        Spacer()
+                    }
+                }
+                .frame(width: 12)
+                .frame(maxHeight: .infinity)
             }
             .buttonStyle(PlainButtonStyle())
-            .help(filesStore.isCollapsed ? "Show Sidebar" : "Hide Sidebar")
+            .help(filesStore.isCollapsed ? "Show Sidebar (⌘+Shift+B)" : "Hide Sidebar (⌘+Shift+B)")
         }
         .overlay(
             Rectangle()
@@ -175,6 +184,7 @@ struct VaultFileBrowser: View {
             ) else { return }
             
             var foundFiles: [MarkdownFile] = []
+            var journalFiles: [MarkdownFile] = []
             
             for case let fileURL as URL in enumerator {
                 let path = fileURL.path
@@ -186,13 +196,23 @@ struct VaultFileBrowser: View {
                 guard fileURL.pathExtension == "md" else { continue }
                 
                 let relativePath = fileURL.path.replacingOccurrences(of: vaultPath + "/", with: "")
-                foundFiles.append(MarkdownFile(url: fileURL, relativePath: relativePath))
+                let file = MarkdownFile(url: fileURL, relativePath: relativePath)
+                foundFiles.append(file)
+                
+                if relativePath.lowercased().hasPrefix("journal/") {
+                    journalFiles.append(file)
+                }
             }
             
             let sortedFiles = foundFiles.sorted { $0.relativePath < $1.relativePath }
             
             DispatchQueue.main.async {
                 self.filesStore.files = sortedFiles
+                
+                // Default to latest daily note
+                if self.selectedFile == nil, let latestJournal = journalFiles.sorted(by: { $0.name > $1.name }).first {
+                    self.selectedFile = latestJournal.url
+                }
             }
         }
     }

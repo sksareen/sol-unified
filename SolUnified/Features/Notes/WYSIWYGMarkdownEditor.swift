@@ -143,10 +143,20 @@ struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
     
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return scrollView
-        }
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = true
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        
+        let textView = EditorTextView()
+        textView.autoresizingMask = [.width]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        
+        scrollView.documentView = textView
         
         // Configure text view
         textView.delegate = context.coordinator
@@ -197,6 +207,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         guard let textStorage = textView.textStorage else { return }
         
         let fullRange = NSRange(location: 0, length: textStorage.length)
+        let selectedRange = textView.selectedRange()
         
         // Begin editing to batch changes and prevent flicker
         textStorage.beginEditing()
@@ -223,11 +234,16 @@ struct MarkdownTextEditor: NSViewRepresentable {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) {
                 let matches = regex.matches(in: textStorage.string, range: fullRange)
                 for match in matches {
-                    // Grey out the # symbols
+                    // Hide hashes if not editing this line (P1 feedback)
+                    let lineRange = (textStorage.string as NSString).lineRange(for: match.range)
+                    let isEditingLine = NSLocationInRange(selectedRange.location, lineRange)
+                    
                     if match.numberOfRanges > 1 {
                         let hashRange = match.range(at: 1)
+                        let hashColor = isEditingLine ? NSColor.tertiaryLabelColor : NSColor.clear
+                        
                         textStorage.addAttributes([
-                            .foregroundColor: NSColor.secondaryLabelColor,
+                            .foregroundColor: hashColor,
                             .font: NSFont.systemFont(ofSize: 13, weight: .regular)
                         ], range: hashRange)
                     }
@@ -381,11 +397,119 @@ struct MarkdownTextEditor: NSViewRepresentable {
             parent.text = textView.string
             
             // Apply formatting instantly without debouncing
-            // Using textStorage directly prevents flicker
             isApplyingFormatting = true
             parent.applyMarkdownFormatting(to: textView)
             isApplyingFormatting = false
         }
+        
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            
+            // Re-apply formatting to update hidden headings
+            if !isApplyingFormatting {
+                isApplyingFormatting = true
+                parent.applyMarkdownFormatting(to: textView)
+                isApplyingFormatting = false
+            }
+        }
+    }
+}
+
+// MARK: - EditorTextView Subclass for Keyboard Shortcuts
+class EditorTextView: NSTextView {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // Command + Key shortcuts
+        if event.modifierFlags.contains(.command) {
+            switch event.charactersIgnoringModifiers {
+            case "b": // Bold
+                toggleFormatting(marker: "**")
+                return true
+            case "i": // Italic
+                toggleFormatting(marker: "*") // Or _
+                return true
+            case "u": // Underline (Not standard MD, but user asked. Maybe <ins>?)
+                // Markdown doesn't support underline standardly. Let's just do Bold/Italic for now or use HTML
+                // User said "bold/italic/underlines/strikethrough"
+                // Let's fallback to system behavior for underline if we can't do markdown
+                return super.performKeyEquivalent(with: event) 
+            default:
+                break
+            }
+        }
+        
+        // Command + Shift + Key shortcuts
+        if event.modifierFlags.contains([.command, .shift]) {
+            switch event.charactersIgnoringModifiers {
+            case "x": // Strikethrough (User asked for strikethrough)
+                toggleFormatting(marker: "~~")
+                return true
+            case "8": // Bullet List
+                toggleListPrefix(prefix: "- ")
+                return true
+            case "9": // Numbered List
+                toggleListPrefix(prefix: "1. ")
+                return true
+            default:
+                break
+            }
+        }
+        
+        return super.performKeyEquivalent(with: event)
+    }
+    
+    private func toggleFormatting(marker: String) {
+        guard let textStorage = self.textStorage else { return }
+        let range = self.selectedRange()
+        
+        // Simple toggle logic - wrap selection
+        // Check if already wrapped
+        let string = textStorage.string as NSString
+        let len = marker.count
+        
+        if range.length > 0 {
+            // Check surrounding
+            let expandedRange = NSRange(location: max(0, range.location - len), length: range.length + (len * 2))
+            if expandedRange.location + expandedRange.length <= string.length {
+                let candidate = string.substring(with: expandedRange)
+                if candidate.hasPrefix(marker) && candidate.hasSuffix(marker) {
+                    // Unwrap
+                    textStorage.beginEditing()
+                    textStorage.replaceCharacters(in: NSRange(location: range.location + range.length, length: len), with: "")
+                    textStorage.replaceCharacters(in: NSRange(location: range.location - len, length: len), with: "")
+                    textStorage.endEditing()
+                    self.didChangeText()
+                    return
+                }
+            }
+            
+            // Wrap
+            textStorage.beginEditing()
+            textStorage.replaceCharacters(in: NSRange(location: range.location + range.length, length: 0), with: marker)
+            textStorage.replaceCharacters(in: NSRange(location: range.location, length: 0), with: marker)
+            textStorage.endEditing()
+            self.setSelectedRange(NSRange(location: range.location + len, length: range.length))
+            self.didChangeText()
+        }
+    }
+    
+    private func toggleListPrefix(prefix: String) {
+        guard let textStorage = self.textStorage else { return }
+        let range = self.selectedRange()
+        let string = textStorage.string as NSString
+        let lineRange = string.lineRange(for: range)
+        let lineContent = string.substring(with: lineRange)
+        
+        textStorage.beginEditing()
+        if lineContent.hasPrefix(prefix) {
+            // Remove prefix
+            textStorage.replaceCharacters(in: NSRange(location: lineRange.location, length: prefix.count), with: "")
+        } else {
+            // Check for other prefixes to replace? E.g. changing bullet to number
+            // For now just add
+            textStorage.replaceCharacters(in: NSRange(location: lineRange.location, length: 0), with: prefix)
+        }
+        textStorage.endEditing()
+        self.didChangeText()
     }
 }
 

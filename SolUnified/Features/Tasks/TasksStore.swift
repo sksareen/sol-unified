@@ -93,7 +93,7 @@ class TasksStore: ObservableObject {
         saveToFile()
     }
     
-    func updateTask(taskId: String, assignedTo: String?, status: String?) {
+    func updateTask(taskId: String, assignedTo: String? = nil, status: String? = nil, description: String? = nil, project: String? = nil) {
         guard let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) else {
             return
         }
@@ -104,6 +104,12 @@ class TasksStore: ObservableObject {
         }
         if let status = status {
             updatedTask.status = status
+        }
+        if let description = description {
+            updatedTask.description = description
+        }
+        if let project = project {
+            updatedTask.project = project
         }
         updatedTask.updatedAt = Date()
         

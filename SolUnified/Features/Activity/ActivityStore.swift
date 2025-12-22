@@ -103,6 +103,9 @@ class ActivityStore: ObservableObject {
             inputMonitor.startMouseTracking()
         }
         
+        // Start Causal Inference Sensor (ValueComputer)
+        ValueComputer.shared.startMonitoring()
+        
         // Setup internal app tracking callbacks
         setupInternalTrackingCallbacks()
         
@@ -142,6 +145,8 @@ class ActivityStore: ObservableObject {
         idleDetector.stopMonitoring()
         inputMonitor.stopMonitoring()
         inputMonitor.stopMouseTracking()
+        
+        ValueComputer.shared.stopMonitoring()
         
         flushTimer?.invalidate()
         flushTimer = nil
@@ -1361,7 +1366,7 @@ class ActivityStore: ObservableObject {
         return buckets
     }
     
-    private func getEvents(from: Date, to: Date) -> [ActivityEvent] {
+    func getEvents(from: Date, to: Date) -> [ActivityEvent] {
         let startString = Database.dateToString(from)
         let endString = Database.dateToString(to)
         
