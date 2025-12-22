@@ -48,8 +48,8 @@ class HotkeyManager {
             return false
         }
         
-        // Register hotkey: Option + Backtick
-        let keyCode = UInt32(kVK_ANSI_Grave) // Backtick key
+        // Register hotkey: Option + P
+        let keyCode = UInt32(kVK_ANSI_P) // P key
         let modifiers = UInt32(optionKey)
         
         let registerStatus = RegisterEventHotKey(
@@ -66,7 +66,7 @@ class HotkeyManager {
             return false
         }
         
-        print("Hotkey registered successfully: Option + `")
+        print("Hotkey registered successfully: Option + P")
         return true
     }
     

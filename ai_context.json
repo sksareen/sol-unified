@@ -1,64 +1,64 @@
 {
-  "project" : "SolUnified",
-  "status" : "In Development",
-  "last_update" : "2025-12-21T04:54:37Z",
+  "context_message" : "Hey! You're picking up SolUnified. We just swapped the Screenshots grid for a dense Table view to improve utility. Selection now triggers a detail sheet with the image preview. Focus on keeping the 'Brutalist' aesthetic: high contrast, functional, no fluff. Speed to iterate is everything.",
   "memory" : {
-    "last_check" : "2025-12-21T04:54:37Z",
-    "change_window" : "1h",
-    "data_sources" : {
-      "clipboard" : {
-        "last_hash" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "new_since_check" : 0,
-        "recent_activity" : "No new clipboard items",
-        "last_count" : 0
-      },
-      "notes" : {
-        "new_since_check" : 0,
-        "last_count" : 0,
-        "recent_activity" : "No note changes",
-        "last_hash" : ""
-      },
-      "screenshots" : {
-        "last_count" : 0,
-        "new_since_check" : 0,
-        "recent_activity" : "No new screenshots",
-        "last_hash" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      "activity" : {
-        "session_duration" : "0m",
-        "key_events" : [
-
-        ],
-        "last_active_app" : ""
-      }
-    },
     "smart_summary" : {
-      "focus_areas" : [
-
-      ],
       "key_insights" : [
 
       ],
       "session_type" : "idle",
-      "productivity_score" : 0,
-      "context_shifts" : 0
-    }
+      "focus_areas" : [
+
+      ],
+      "context_shifts" : 0,
+      "productivity_score" : 0
+    },
+    "change_window" : "1h",
+    "data_sources" : {
+      "screenshots" : {
+        "last_count" : 100,
+        "last_hash" : "577db643c4878985508f0d87b0c5c5c301cf4dcbdedfa5cca3d09fd04b4e1242",
+        "new_since_check" : 0,
+        "recent_activity" : "No new screenshots"
+      },
+      "clipboard" : {
+        "last_hash" : "3f903b36e64590f30835edc861af7cd405f85404ceed43e11411503cd7fe3be5",
+        "recent_activity" : "No new clipboard items",
+        "last_count" : 100,
+        "new_since_check" : 0
+      },
+      "notes" : {
+        "last_hash" : "",
+        "recent_activity" : "No note changes",
+        "last_count" : 0,
+        "new_since_check" : 0
+      },
+      "activity" : {
+        "key_events" : [
+
+        ],
+        "last_active_app" : "",
+        "session_duration" : "0m"
+      }
+    },
+    "last_check" : "2025-12-22T01:48:32Z"
   },
-  "next_priorities" : [
-    "Add double-click to open screenshot in Finder",
-    "Implement multi-selection for bulk actions",
-    "Column-based sorting for the new Screenshots table"
-  ],
+  "architecture_notes" : {
+    "design_system" : "Brutalist (defined in BrutalistStyles.swift)",
+    "ui_pattern" : "SwiftUI + AppKit bridge",
+    "data_layer" : "SQLite (direct via Database.swift)"
+  },
+  "project" : "SolUnified",
   "recent_changes" : [
     "Replaced Screenshots LazyVGrid with Table",
     "Added thumbnail, description, tags, and date columns to Screenshots table",
     "Implemented sheet-based preview on table row selection",
     "Removed unused ScreenshotCard component"
   ],
-  "context_message" : "Hey! You're picking up SolUnified. We just swapped the Screenshots grid for a dense Table view to improve utility. Selection now triggers a detail sheet with the image preview. Focus on keeping the 'Brutalist' aesthetic: high contrast, functional, no fluff. Speed to iterate is everything.",
-  "architecture_notes" : {
-    "design_system" : "Brutalist (defined in BrutalistStyles.swift)",
-    "ui_pattern" : "SwiftUI + AppKit bridge",
-    "data_layer" : "SQLite (direct via Database.swift)"
-  }
+  "last_update" : "2025-12-22T01:48:32Z",
+  "status" : "In Development",
+  "next_priorities" : [
+    "Add double-click to open screenshot in Finder",
+    "Implement multi-selection for bulk actions",
+    "Column-based sorting for the new Screenshots table"
+  ]
 }

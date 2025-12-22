@@ -116,7 +116,30 @@ class Database {
             """,
             "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
             "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
-            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)"
+            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)",
+            
+            // NEURAL VALUES TABLE (The Causal Panel)
+            """
+            CREATE TABLE IF NOT EXISTS neural_values (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                
+                -- OUTCOMES (Y)
+                focus_score REAL,
+                velocity_score REAL,
+                
+                -- TREATMENTS (T)
+                primary_activity TEXT,
+                intervention_active INTEGER DEFAULT 0,
+                
+                -- COVARIATES (X)
+                energy_level REAL,
+                context_label TEXT,
+                
+                created_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_neural_timestamp ON neural_values(timestamp DESC)"
         ]
         
         for sql in tables {
