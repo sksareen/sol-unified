@@ -142,6 +142,24 @@ enum ActivityEventType: String, Codable {
     case internalSettingChange
     case internalWindowShow
     case internalWindowHide
+    
+    // Data Capture - Emotional Detection & Guidance
+    case biofeedbackLog // Heart rate, HRV, etc.
+    case emotionLog // User self-reported emotion
+    
+    // Data Capture - Personalized Learning
+    case learningTargetSet
+    case learningTargetMet
+    case learningTargetMissed
+    
+    // Data Capture - Productivity & Outcomes
+    case outcomeLogged // Tangible achievement
+    case productivityMetric // Generic metric
+    
+    // Data Capture - Mental Health & Wellness
+    case reflectionLog
+    case mindfulnessSessionStart
+    case mindfulnessSessionEnd
 }
 
 struct ActivityEvent: Identifiable, Codable {
@@ -153,8 +171,9 @@ struct ActivityEvent: Identifiable, Codable {
     let eventData: String? // JSON string for additional data
     let timestamp: Date
     let createdAt: Date
+    let sequenceId: String? // Optional link to a specific sequence/session
     
-    init(id: Int = 0, eventType: ActivityEventType, appBundleId: String? = nil, appName: String? = nil, windowTitle: String? = nil, eventData: String? = nil, timestamp: Date = Date(), createdAt: Date = Date()) {
+    init(id: Int = 0, eventType: ActivityEventType, appBundleId: String? = nil, appName: String? = nil, windowTitle: String? = nil, eventData: String? = nil, timestamp: Date = Date(), createdAt: Date = Date(), sequenceId: String? = nil) {
         self.id = id
         self.eventType = eventType
         self.appBundleId = appBundleId
@@ -163,7 +182,77 @@ struct ActivityEvent: Identifiable, Codable {
         self.eventData = eventData
         self.timestamp = timestamp
         self.createdAt = createdAt
+        self.sequenceId = sequenceId
     }
+}
+
+// MARK: - Sequence Models
+struct Sequence: Identifiable, Codable {
+    let id: String
+    let type: SequenceType
+    let startTime: Date
+    var endTime: Date?
+    var status: SequenceStatus
+    var metadata: String? // JSON string for goals, context
+    
+    init(id: String = UUID().uuidString, type: SequenceType, startTime: Date = Date(), endTime: Date? = nil, status: SequenceStatus = .active, metadata: String? = nil) {
+        self.id = id
+        self.type = type
+        self.startTime = startTime
+        self.endTime = endTime
+        self.status = status
+        self.metadata = metadata
+    }
+}
+
+enum SequenceType: String, Codable {
+    case workSession
+    case learningBlock
+    case mindfulness
+    case reflection
+    case custom
+}
+
+enum SequenceStatus: String, Codable {
+    case active
+    case completed
+    case abandoned
+    case paused
+}
+
+// MARK: - Data Capture Payloads (Serialized to eventData)
+struct BiofeedbackPayload: Codable {
+    let type: String // "heart_rate", "hrv", "breathing_rate"
+    let value: Double
+    let unit: String
+    let source: String?
+}
+
+struct EmotionPayload: Codable {
+    let valence: Double // -1.0 to 1.0 (negative to positive)
+    let arousal: Double // 0.0 to 1.0 (calm to excited)
+    let label: String? // "happy", "anxious", etc.
+    let note: String?
+}
+
+struct LearningTargetPayload: Codable {
+    let targetId: String
+    let description: String
+    let targetType: String // "time_bound", "unbounded"
+    let capacityRequired: Double? // Estimated capacity needed
+}
+
+struct OutcomePayload: Codable {
+    let outcomeId: String
+    let description: String
+    let value: Double? // Quantifiable value if applicable
+    let tags: [String]?
+}
+
+struct ReflectionPayload: Codable {
+    let prompt: String?
+    let response: String
+    let tags: [String]?
 }
 
 struct AppSession: Identifiable, Codable {

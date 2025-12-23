@@ -25,6 +25,10 @@ class ActivityStore: ObservableObject {
     @Published var eventsTodayCount: Int = 0
     @Published var monitoringError: String?
     
+    // Sequence Tracking
+    @Published var activeSequenceId: String?
+    @Published var activeSequenceType: SequenceType?
+    
     // Summary data for UI
     @Published var categorySummaries: [CategorySummary] = []
     @Published var timePeriodSummaries: [TimePeriodSummary] = []
@@ -425,6 +429,103 @@ class ActivityStore: ObservableObject {
         return sessions
     }
     
+    // MARK: - Sequence Management
+    
+    func startSequence(type: SequenceType, metadata: [String: Any]? = nil) {
+        // End existing sequence if any
+        if activeSequenceId != nil {
+            endActiveSequence()
+        }
+        
+        let id = UUID().uuidString
+        let now = Date()
+        
+        var metadataString: String?
+        if let metadata = metadata,
+           let data = try? JSONSerialization.data(withJSONObject: metadata),
+           let string = String(data: data, encoding: .utf8) {
+            metadataString = string
+        }
+        
+        let sequence = Sequence(
+            id: id,
+            type: type,
+            startTime: now,
+            status: .active,
+            metadata: metadataString
+        )
+        
+        if db.insertSequence(sequence) {
+            DispatchQueue.main.async { [weak self] in
+                self?.activeSequenceId = id
+                self?.activeSequenceType = type
+                self?.log.logStatus("Started sequence: \(type.rawValue)", symbol: "🎬")
+            }
+        } else {
+            log.logError("Failed to start sequence")
+        }
+    }
+    
+    func endActiveSequence(status: SequenceStatus = .completed) {
+        guard let id = activeSequenceId else { return }
+        
+        let now = Date()
+        if db.updateSequenceStatus(id: id, status: status, endTime: now) {
+            DispatchQueue.main.async { [weak self] in
+                self?.activeSequenceId = nil
+                self?.activeSequenceType = nil
+                self?.log.logStatus("Ended sequence: \(status.rawValue)", symbol: "🏁")
+            }
+        } else {
+            log.logError("Failed to end sequence")
+        }
+    }
+    
+    // MARK: - Data Capture Logging
+    
+    func logBiofeedback(type: String, value: Double, unit: String, source: String? = nil) {
+        let payload = BiofeedbackPayload(type: type, value: value, unit: unit, source: source)
+        logDataCaptureEvent(type: .biofeedbackLog, payload: payload)
+    }
+    
+    func logEmotion(valence: Double, arousal: Double, label: String? = nil, note: String? = nil) {
+        let payload = EmotionPayload(valence: valence, arousal: arousal, label: label, note: note)
+        logDataCaptureEvent(type: .emotionLog, payload: payload)
+    }
+    
+    func logLearningTarget(id: String, description: String, type: String, capacity: Double?) {
+        let payload = LearningTargetPayload(targetId: id, description: description, targetType: type, capacityRequired: capacity)
+        logDataCaptureEvent(type: .learningTargetSet, payload: payload)
+    }
+    
+    func logOutcome(id: String, description: String, value: Double? = nil, tags: [String]? = nil) {
+        let payload = OutcomePayload(outcomeId: id, description: description, value: value, tags: tags)
+        logDataCaptureEvent(type: .outcomeLogged, payload: payload)
+    }
+    
+    func logReflection(prompt: String?, response: String, tags: [String]? = nil) {
+        let payload = ReflectionPayload(prompt: prompt, response: response, tags: tags)
+        logDataCaptureEvent(type: .reflectionLog, payload: payload)
+    }
+    
+    private func logDataCaptureEvent<T: Encodable>(type: ActivityEventType, payload: T) {
+        guard let data = try? JSONEncoder().encode(payload),
+              let jsonString = String(data: data, encoding: .utf8) else {
+            log.logError("Failed to encode payload for \(type)")
+            return
+        }
+        
+        let event = ActivityEvent(
+            eventType: type,
+            appBundleId: Bundle.main.bundleIdentifier,
+            appName: "Sol Unified",
+            eventData: jsonString,
+            timestamp: Date(),
+            sequenceId: activeSequenceId
+        )
+        addEvent(event)
+    }
+
     func clearHistory() -> Bool {
         let success = db.execute("DELETE FROM activity_log")
         if success {
@@ -1166,8 +1267,24 @@ class ActivityStore: ObservableObject {
             return
         }
         
+        // Inject sequence ID if active and missing
+        var eventToLog = event
+        if eventToLog.sequenceId == nil, let activeId = activeSequenceId {
+            eventToLog = ActivityEvent(
+                id: event.id,
+                eventType: event.eventType,
+                appBundleId: event.appBundleId,
+                appName: event.appName,
+                windowTitle: event.windowTitle,
+                eventData: event.eventData,
+                timestamp: event.timestamp,
+                createdAt: event.createdAt,
+                sequenceId: activeId
+            )
+        }
+        
         // Deduplication: Create hash of event and check if it's a duplicate
-        let eventHash = createEventHash(event)
+        let eventHash = createEventHash(eventToLog)
         let now = event.timestamp
         
         // Skip if this is the exact same event within the deduplication window
@@ -1302,7 +1419,8 @@ class ActivityStore: ObservableObject {
             windowTitle: row["window_title"] as? String,
             eventData: row["event_data"] as? String,
             timestamp: Database.stringToDate(row["timestamp"] as? String ?? "") ?? Date(),
-            createdAt: Database.stringToDate(row["created_at"] as? String ?? "") ?? Date()
+            createdAt: Database.stringToDate(row["created_at"] as? String ?? "") ?? Date(),
+            sequenceId: row["sequence_id"] as? String
         )
     }
     

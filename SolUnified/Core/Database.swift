@@ -42,8 +42,29 @@ class Database {
             }
             
             result = createTablesSync()
+            
+            // Perform migrations if needed
+            if result {
+                performMigrationsSync()
+            }
         }
         return result
+    }
+    
+    private func performMigrationsSync() {
+        // Migration: Add sequence_id to activity_log if missing
+        let checkColumnSql = "PRAGMA table_info(activity_log);"
+        let columns = querySync(checkColumnSql)
+        let hasSequenceId = columns.contains { ($0["name"] as? String) == "sequence_id" }
+        
+        if !hasSequenceId {
+            print("Migrating: Adding sequence_id to activity_log")
+            if executeSync("ALTER TABLE activity_log ADD COLUMN sequence_id TEXT") {
+                _ = executeSync("CREATE INDEX IF NOT EXISTS idx_activity_sequence ON activity_log(sequence_id)")
+            } else {
+                print("Error adding sequence_id column")
+            }
+        }
     }
     
     private func createTables() -> Bool {
@@ -111,12 +132,27 @@ class Database {
                 window_title TEXT,
                 event_data TEXT,
                 timestamp TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                sequence_id TEXT
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
             "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
             "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_sequence ON activity_log(sequence_id)",
+            
+            // SEQUENCES TABLE
+            """
+            CREATE TABLE IF NOT EXISTS sequences (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT,
+                status TEXT NOT NULL,
+                metadata TEXT
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_sequences_start ON sequences(start_time DESC)",
             
             // NEURAL VALUES TABLE (The Causal Panel)
             """
@@ -277,8 +313,8 @@ class Database {
         }
         
         let sql = """
-            INSERT INTO activity_log (event_type, app_bundle_id, app_name, window_title, event_data, timestamp, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO activity_log (event_type, app_bundle_id, app_name, window_title, event_data, timestamp, created_at, sequence_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
         
         var success = true
@@ -321,6 +357,12 @@ class Database {
             sqlite3_bind_text(statement, 6, (Database.dateToString(event.timestamp) as NSString).utf8String, -1, nil)
             sqlite3_bind_text(statement, 7, (Database.dateToString(event.createdAt) as NSString).utf8String, -1, nil)
             
+            if let sequenceId = event.sequenceId {
+                sqlite3_bind_text(statement, 8, (sequenceId as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 8)
+            }
+            
             if sqlite3_step(statement) != SQLITE_DONE {
                 print("Error inserting activity event: \(String(cString: sqlite3_errmsg(db)))")
                 success = false
@@ -345,6 +387,54 @@ class Database {
         return success
     }
     
+    // MARK: - Sequence Methods
+    
+    func insertSequence(_ sequence: Sequence) -> Bool {
+        return execute(
+            """
+            INSERT OR REPLACE INTO sequences (id, type, start_time, end_time, status, metadata)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            parameters: [
+                sequence.id,
+                sequence.type.rawValue,
+                Database.dateToString(sequence.startTime),
+                sequence.endTime.map { Database.dateToString($0) } as Any,
+                sequence.status.rawValue,
+                sequence.metadata as Any
+            ]
+        )
+    }
+    
+    func getSequence(id: String) -> Sequence? {
+        let results = query("SELECT * FROM sequences WHERE id = ?", parameters: [id])
+        guard let row = results.first else { return nil }
+        
+        return Sequence(
+            id: row["id"] as? String ?? "",
+            type: SequenceType(rawValue: row["type"] as? String ?? "") ?? .custom,
+            startTime: Database.stringToDate(row["start_time"] as? String ?? "") ?? Date(),
+            endTime: Database.stringToDate(row["end_time"] as? String ?? ""),
+            status: SequenceStatus(rawValue: row["status"] as? String ?? "") ?? .active,
+            metadata: row["metadata"] as? String
+        )
+    }
+    
+    func updateSequenceStatus(id: String, status: SequenceStatus, endTime: Date? = nil) -> Bool {
+        var sql = "UPDATE sequences SET status = ?"
+        var params: [Any] = [status.rawValue]
+        
+        if let end = endTime {
+            sql += ", end_time = ?"
+            params.append(Database.dateToString(end))
+        }
+        
+        sql += " WHERE id = ?"
+        params.append(id)
+        
+        return execute(sql, parameters: params)
+    }
+
     func cleanupOldActivityLogs(olderThan days: Int) -> Bool {
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         let cutoffString = Database.dateToString(cutoffDate)
