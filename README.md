@@ -176,7 +176,7 @@ Sol Unified reads from `~/Documents/agent_state.json` for task and agent synchro
 
 ### Vault Path
 
-By default, the vault browses `~/Documents`. You can modify this in `VaultView.swift`.
+By default, the vault browses `~/` (Home). You can modify this in **Settings** (Cmd + ,) under the **Vault** tab.
 
 ## Database
 
@@ -193,8 +193,9 @@ SQLite database stored at:
 
 ## Troubleshooting
 
-### Hotkey not working
-- Check Accessibility permissions: System Settings → Privacy & Security → Accessibility
+### Hotkey not working or Activity Log empty
+- Check **Accessibility** permissions: System Settings → Privacy & Security → Accessibility
+- Check **Input Monitoring** permissions: System Settings → Privacy & Security → Input Monitoring (Required for Activity Log)
 - Add Sol Unified to allowed apps
 - Restart the app
 

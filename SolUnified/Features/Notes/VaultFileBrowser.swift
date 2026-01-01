@@ -10,6 +10,7 @@ import SwiftUI
 class VaultFilesStore: ObservableObject {
     static let shared = VaultFilesStore()
     @Published var files: [MarkdownFile] = []
+    @Published var isLoading = false
     @Published var hasLoaded = false
     @Published var expandedFolders: Set<String> = []
     @Published var isCollapsed: Bool = false
@@ -73,53 +74,67 @@ struct VaultFileBrowser: View {
             )
             
             // File list
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(groupFilesByFolder(filteredFiles)) { group in
-                        VStack(alignment: .leading, spacing: 2) {
-                            // Folder header
-                            Button(action: {
-                                toggleFolder(group.folder)
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: filesStore.expandedFolders.contains(group.folder) ? "chevron.down" : "chevron.right")
-                                        .font(.system(size: 9, weight: .bold))
-                                    
-                                    Image(systemName: "folder.fill")
-                                        .font(.system(size: 11))
-                                    
-                                    Text(group.folder)
-                                        .font(.system(size: 11, weight: .semibold))
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(group.files.count)")
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundColor(.secondary.opacity(0.6))
+            ZStack {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(groupFilesByFolder(filteredFiles)) { group in
+                            VStack(alignment: .leading, spacing: 2) {
+                                // Folder header
+                                Button(action: {
+                                    toggleFolder(group.folder)
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: filesStore.expandedFolders.contains(group.folder) ? "chevron.down" : "chevron.right")
+                                            .font(.system(size: 9, weight: .bold))
+                                        
+                                        Image(systemName: "folder.fill")
+                                            .font(.system(size: 11))
+                                        
+                                        Text(group.folder)
+                                            .font(.system(size: 11, weight: .semibold))
+                                        
+                                        Spacer()
+                                        
+                                        Text("\(group.files.count)")
+                                            .font(.system(size: 9, weight: .medium))
+                                            .foregroundColor(.secondary.opacity(0.6))
+                                    }
+                                    .foregroundColor(.brutalistTextPrimary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
                                 }
-                                .foregroundColor(.brutalistTextPrimary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 6)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.brutalistBgTertiary.opacity(0.5))
-                            
-                            // Files in folder
-                            if filesStore.expandedFolders.contains(group.folder) {
-                                ForEach(group.files) { file in
-                                    FileRow(
-                                        file: file,
-                                        isSelected: selectedFile == file.url,
-                                        onTap: {
-                                            selectedFile = file.url
-                                        }
-                                    )
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.brutalistBgTertiary.opacity(0.5))
+                                
+                                // Files in folder
+                                if filesStore.expandedFolders.contains(group.folder) {
+                                    ForEach(group.files) { file in
+                                        FileRow(
+                                            file: file,
+                                            isSelected: selectedFile == file.url,
+                                            onTap: {
+                                                selectedFile = file.url
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
+                
+                if filesStore.isLoading {
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading...")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.brutalistBgPrimary.opacity(0.8))
+                }
             }
             .background(Color.brutalistBgPrimary)
                 }
@@ -158,9 +173,10 @@ struct VaultFileBrowser: View {
             alignment: .trailing
         )
         .onAppear {
-            if !filesStore.hasLoaded {
-                loadFiles()
-            }
+            loadFiles()
+        }
+        .onChange(of: vaultPath) { _ in
+            loadFiles()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("FocusVaultSearch"))) { _ in
             isSearchFocused = true
@@ -173,7 +189,9 @@ struct VaultFileBrowser: View {
     }
     
     private func loadFiles() {
+        filesStore.isLoading = true
         filesStore.hasLoaded = true
+        filesStore.files = [] // Clear existing files while loading
         
         DispatchQueue.global(qos: .userInitiated).async {
             let fileManager = FileManager.default
@@ -181,14 +199,32 @@ struct VaultFileBrowser: View {
                 at: URL(fileURLWithPath: vaultPath),
                 includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
                 options: [.skipsHiddenFiles]
-            ) else { return }
+            ) else {
+                DispatchQueue.main.async {
+                    self.filesStore.isLoading = false
+                }
+                return
+            }
             
             var foundFiles: [MarkdownFile] = []
             var journalFiles: [MarkdownFile] = []
             
+            // Directories to exclude for performance
+            let excludedDirs = ["node_modules", ".git", ".obsidian", ".trash", "Library", "Applications", "System", "bin", "sbin", "usr", "DerivedData", "build"]
+            
             for case let fileURL as URL in enumerator {
                 let path = fileURL.path
-                if path.contains("node_modules") || path.contains(".git") || path.contains(".obsidian") {
+                
+                // Check exclusions
+                var shouldSkip = false
+                for excluded in excludedDirs {
+                    if path.contains("/\(excluded)/") || path.hasSuffix("/\(excluded)") {
+                        shouldSkip = true
+                        break
+                    }
+                }
+                
+                if shouldSkip {
                     enumerator.skipDescendants()
                     continue
                 }
@@ -202,12 +238,18 @@ struct VaultFileBrowser: View {
                 if relativePath.lowercased().hasPrefix("journal/") {
                     journalFiles.append(file)
                 }
+                
+                // Limit total files to prevent UI freeze on huge folders
+                if foundFiles.count > 5000 {
+                    break
+                }
             }
             
             let sortedFiles = foundFiles.sorted { $0.relativePath < $1.relativePath }
             
             DispatchQueue.main.async {
                 self.filesStore.files = sortedFiles
+                self.filesStore.isLoading = false
                 
                 // Default to latest daily note
                 if self.selectedFile == nil, let latestJournal = journalFiles.sorted(by: { $0.name > $1.name }).first {

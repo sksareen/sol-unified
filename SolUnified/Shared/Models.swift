@@ -448,7 +448,7 @@ struct TimelineBucket: Identifiable {
 // MARK: - Agent Task Models
 struct AgentTask: Identifiable, Codable {
     let id: String
-    let title: String
+    var title: String
     var description: String
     var assignedTo: String
     var status: String

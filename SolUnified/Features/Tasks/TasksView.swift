@@ -176,22 +176,21 @@ struct TaskRow: View {
                                 .frame(width: 10, height: 10)
                         }
                     }
+                    .frame(width: 30, height: 30) // Larger hit area
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Title", text: Binding(
                         get: { task.title },
-                        set: { _ in } // Title editing not requested/implemented fully yet, keeping mostly read-only feel but could add if needed
+                        set: { newVal in store.updateTask(taskId: task.id, title: newVal) }
                     ))
-                    .disabled(true) // User didn't explicitly ask for title edit, keeping safe. But description/project yes.
-                    // Actually, let's keep title as Text for now to avoid accidental edits if not requested.
-                    // Reverting title to Text.
-                    
-                    Text(task.title)
-                        .font(.system(size: 14))
-                        .foregroundColor(task.status == "completed" ? Color.brutalistTextMuted : Color.brutalistTextPrimary)
-                        .strikethrough(task.status == "completed", color: Color.brutalistTextMuted)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: 14))
+                    .foregroundColor(task.status == "completed" ? Color.brutalistTextMuted : Color.brutalistTextPrimary)
+                    // Add strikethrough effect simulation if needed, but TextField doesn't support it natively easily.
+                    // For now, text color change is enough.
                     
                     if isSelected {
                         // Editable Description
@@ -234,14 +233,7 @@ struct TaskRow: View {
                             store.updateTask(taskId: task.id, status: newStatus)
                         }
                     )
-                    
-                    AgentPicker(
-                        selectedAgent: task.assignedTo,
-                        availableAgents: store.availableAgents,
-                        onChange: { newAgent in
-                            store.updateTask(taskId: task.id, assignedTo: newAgent)
-                        }
-                    )
+                    .frame(width: 90) // Fixed width for alignment
                 }
                 
                 // Color dot matches category
@@ -340,15 +332,24 @@ struct StatusPicker: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: statusIcon)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9, weight: .bold)) // Slightly smaller, bolder icon
                 Text(statusDisplay)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium)) // Smaller font
+                    .lineLimit(1)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8))
+                    .foregroundColor(Color.brutalistTextMuted.opacity(0.7))
             }
             .foregroundColor(Color.brutalistTextSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
             .background(Color.brutalistBgTertiary)
-            .cornerRadius(12)
+            .cornerRadius(6) // Sharper corners for brutalist look
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.brutalistBorder.opacity(0.5), lineWidth: 1)
+            )
         }
         .menuStyle(BorderlessButtonMenuStyle())
     }

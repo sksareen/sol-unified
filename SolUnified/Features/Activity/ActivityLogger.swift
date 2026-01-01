@@ -64,6 +64,16 @@ struct ActivityLogger {
         case .internalSettingChange: return "⚙️"
         case .internalWindowShow: return "👁️"
         case .internalWindowHide: return "👁️‍🗨️"
+        case .biofeedbackLog: return "💓"
+        case .emotionLog: return "😊"
+        case .learningTargetSet: return "🎯"
+        case .learningTargetMet: return "✅"
+        case .learningTargetMissed: return "❌"
+        case .outcomeLogged: return "🏁"
+        case .productivityMetric: return "📈"
+        case .reflectionLog: return "📔"
+        case .mindfulnessSessionStart: return "🧘"
+        case .mindfulnessSessionEnd: return "🧘"
         }
     }
     

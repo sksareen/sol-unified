@@ -173,6 +173,16 @@ struct LiveEventRow: View {
         case .screenSleep: return "🌙"
         case .screenWake: return "🌅"
         case .heartbeat: return "❤️"
+        case .biofeedbackLog: return "💓"
+        case .emotionLog: return "😊"
+        case .learningTargetSet: return "🎯"
+        case .learningTargetMet: return "✅"
+        case .learningTargetMissed: return "❌"
+        case .outcomeLogged: return "🏁"
+        case .productivityMetric: return "📈"
+        case .reflectionLog: return "📔"
+        case .mindfulnessSessionStart: return "🧘"
+        case .mindfulnessSessionEnd: return "🧘"
         }
     }
     
@@ -217,6 +227,16 @@ struct LiveEventRow: View {
         case .screenSleep: return "Sleep"
         case .screenWake: return "Wake"
         case .heartbeat: return "Heartbeat"
+        case .biofeedbackLog: return "Biofeedback"
+        case .emotionLog: return "Emotion"
+        case .learningTargetSet: return "Target Set"
+        case .learningTargetMet: return "Target Met"
+        case .learningTargetMissed: return "Target Missed"
+        case .outcomeLogged: return "Outcome"
+        case .productivityMetric: return "Metric"
+        case .reflectionLog: return "Reflection"
+        case .mindfulnessSessionStart: return "Mindfulness+"
+        case .mindfulnessSessionEnd: return "Mindfulness-"
         }
     }
     

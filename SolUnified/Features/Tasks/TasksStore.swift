@@ -6,7 +6,10 @@ class TasksStore: ObservableObject {
     @Published var lastUpdated: Date = Date()
     @Published var isSaving: Bool = false
     
-    private let statePath = "/Users/savarsareen/coding/mable/agent_state.json"
+    private var statePath: String {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documents.appendingPathComponent("agent_state.json").path
+    }
     private var stateMonitor: DispatchSourceFileSystemObject?
     
     let availableAgents = ["devon", "josh", "gunter", "kevin", "mable"]
@@ -93,7 +96,7 @@ class TasksStore: ObservableObject {
         saveToFile()
     }
     
-    func updateTask(taskId: String, assignedTo: String? = nil, status: String? = nil, description: String? = nil, project: String? = nil) {
+    func updateTask(taskId: String, assignedTo: String? = nil, status: String? = nil, description: String? = nil, project: String? = nil, title: String? = nil) {
         guard let taskIndex = tasks.firstIndex(where: { $0.id == taskId }) else {
             return
         }
@@ -110,6 +113,9 @@ class TasksStore: ObservableObject {
         }
         if let project = project {
             updatedTask.project = project
+        }
+        if let title = title {
+            updatedTask.title = title
         }
         updatedTask.updatedAt = Date()
         

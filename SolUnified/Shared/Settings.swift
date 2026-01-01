@@ -61,6 +61,13 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var vaultRootDirectory: String {
+        didSet {
+            UserDefaults.standard.set(vaultRootDirectory, forKey: "vaultRootDirectory")
+            InternalAppTracker.shared.trackSettingChange(key: "vaultRootDirectory", value: vaultRootDirectory)
+        }
+    }
+    
     @Published var activityLoggingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(activityLoggingEnabled, forKey: "activityLoggingEnabled")
@@ -117,6 +124,9 @@ class AppSettings: ObservableObject {
         let defaultDir = (NSHomeDirectory() + "/Pictures/Pics/Screenshots")
         self.screenshotsDirectory = UserDefaults.standard.string(forKey: "screenshotsDirectory") ?? defaultDir
         
+        // Default vault directory - home directory by default
+        self.vaultRootDirectory = UserDefaults.standard.string(forKey: "vaultRootDirectory") ?? NSHomeDirectory()
+        
         self.activityLoggingEnabled = UserDefaults.standard.bool(forKey: "activityLoggingEnabled")
         self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
         self.keyboardTrackingEnabled = UserDefaults.standard.bool(forKey: "keyboardTrackingEnabled")
@@ -140,12 +150,14 @@ struct SettingsView: View {
         case general = "General"
         case activity = "Activity"
         case screenshots = "Screenshots"
+        case vault = "Vault"
         
         var icon: String {
             switch self {
             case .general: return "gearshape"
             case .activity: return "chart.line.uptrend.xyaxis"
             case .screenshots: return "camera.viewfinder"
+            case .vault: return "folder"
             }
         }
     }
@@ -226,6 +238,8 @@ struct SettingsView: View {
             activityView
         case .screenshots:
             screenshotsView
+        case .vault:
+            vaultView
         }
     }
     
@@ -375,6 +389,54 @@ struct SettingsView: View {
         }
     }
     
+    var vaultView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Vault")
+                .font(.system(size: 20, weight: .bold))
+            
+            Form {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Vault Root Folder")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    HStack(spacing: 8) {
+                        Text(settings.vaultRootDirectory)
+                            .font(.system(size: 11, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(6)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(4)
+                        
+                        Button("Choose...") {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            panel.canCreateDirectories = true
+                            
+                            if panel.runModal() == .OK {
+                                if let url = panel.url {
+                                    settings.vaultRootDirectory = url.path
+                                }
+                            }
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    Text("Select the root folder for your vault notes")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            .formStyle(.grouped)
+            
+            Spacer()
+        }
+    }
+
     var screenshotsView: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Screenshots")

@@ -459,10 +459,10 @@ class ActivityStore: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.activeSequenceId = id
                 self?.activeSequenceType = type
-                self?.log.logStatus("Started sequence: \(type.rawValue)", symbol: "🎬")
+                ActivityLogger.shared.logStatus("Started sequence: \(type.rawValue)", symbol: "🎬")
             }
         } else {
-            log.logError("Failed to start sequence")
+            ActivityLogger.shared.logError("Failed to start sequence")
         }
     }
     
@@ -474,10 +474,10 @@ class ActivityStore: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.activeSequenceId = nil
                 self?.activeSequenceType = nil
-                self?.log.logStatus("Ended sequence: \(status.rawValue)", symbol: "🏁")
+                ActivityLogger.shared.logStatus("Ended sequence: \(status.rawValue)", symbol: "🏁")
             }
         } else {
-            log.logError("Failed to end sequence")
+            ActivityLogger.shared.logError("Failed to end sequence")
         }
     }
     
@@ -1760,6 +1760,16 @@ class ActivityStore: ObservableObject {
         case .screenSleep: return "Screen Sleep"
         case .screenWake: return "Screen Wake"
         case .heartbeat: return "Heartbeat"
+        case .biofeedbackLog: return "Biofeedback"
+        case .emotionLog: return "Emotion Log"
+        case .learningTargetSet: return "Target Set"
+        case .learningTargetMet: return "Target Met"
+        case .learningTargetMissed: return "Target Missed"
+        case .outcomeLogged: return "Outcome"
+        case .productivityMetric: return "Productivity"
+        case .reflectionLog: return "Reflection"
+        case .mindfulnessSessionStart: return "Mindfulness Start"
+        case .mindfulnessSessionEnd: return "Mindfulness End"
         }
     }
     
@@ -1804,6 +1814,16 @@ class ActivityStore: ObservableObject {
         case .screenSleep: return "moon.zzz.fill"
         case .screenWake: return "sunrise.fill"
         case .heartbeat: return "heart.fill"
+        case .biofeedbackLog: return "waveform.path.ecg"
+        case .emotionLog: return "face.smiling"
+        case .learningTargetSet: return "target"
+        case .learningTargetMet: return "checkmark.seal.fill"
+        case .learningTargetMissed: return "xmark.seal.fill"
+        case .outcomeLogged: return "flag.checkered"
+        case .productivityMetric: return "chart.bar.fill"
+        case .reflectionLog: return "book.closed.fill"
+        case .mindfulnessSessionStart: return "leaf.fill"
+        case .mindfulnessSessionEnd: return "leaf"
         }
     }
     

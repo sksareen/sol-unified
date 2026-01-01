@@ -1,64 +1,32 @@
 {
-  "last_update" : "2025-12-23T22:21:55Z",
-  "recent_changes" : [
-    "Implemented Data Capture model: Sequences, Biofeedback, Learning Targets, Outcomes, Reflections",
-    "Added DataSyncService to export sequences for AI analysis",
-    "Updated Database schema with sequences table and sequence_id in activity_log",
-    "Replaced Screenshots LazyVGrid with Table",
-    "Added thumbnail, description, tags, and date columns to Screenshots table",
-    "Implemented sheet-based preview on table row selection",
-    "Removed unused ScreenshotCard component"
-  ],
-  "memory" : {
-    "change_window" : "1h",
-    "smart_summary" : {
-      "session_type" : "idle",
-      "context_shifts" : 0,
-      "key_insights" : [
-
+  "user_goals" : {
+    "knowledge_acquisition" : {
+      "domains" : [
+        "SF Residential Buildings & Neighborhoods",
+        "Prominent Startups & Companies",
+        "Venture Capital Firms",
+        "Prominent & Rising People",
+        "Food & Drink Hotspots",
+        "Luxury Brands (Shopping, Food, Clothes)",
+        "Influential AI Research Papers",
+        "Influential Books"
       ],
-      "focus_areas" : [
-
-      ],
-      "productivity_score" : 0
+      "objective" : "Build social currency to perform well with peers and influential people"
     },
-    "last_check" : "2025-12-23T22:21:55Z",
-    "data_sources" : {
-      "activity" : {
-        "session_duration" : "0m",
-        "last_active_app" : "",
-        "key_events" : [
-
-        ]
-      },
-      "screenshots" : {
-        "last_hash" : "577db643c4878985508f0d87b0c5c5c301cf4dcbdedfa5cca3d09fd04b4e1242",
-        "last_count" : 100,
-        "new_since_check" : 0,
-        "recent_activity" : "No new screenshots"
-      },
-      "clipboard" : {
-        "last_hash" : "def2a988523f2db4eab035967d6d92aecf4fab5c44b12b13fa0c5351903799e6",
-        "last_count" : 100,
-        "new_since_check" : 0,
-        "recent_activity" : "No new clipboard items"
-      },
-      "notes" : {
-        "new_since_check" : 0,
-        "recent_activity" : "No note changes",
-        "last_hash" : "",
-        "last_count" : 0
-      }
+    "personal" : {
+      "happiness" : "Start a business with Ayesha",
+      "health" : "Crush the San Jose Spartan Supper",
+      "wealth" : "Live up to highest potential at work"
+    },
+    "career" : {
+      "path" : "L5 -> L6 -> L7",
+      "current_level" : "L5",
+      "focus_area" : "MSL (Meta System L?) \/ AI Infra",
+      "target_level" : "L7",
+      "objective" : "Perform at high potential, maximize impact visibility"
     }
   },
-  "next_priorities" : [
-    "Add double-click to open screenshot in Finder",
-    "Implement multi-selection for bulk actions",
-    "Column-based sorting for the new Screenshots table"
-  ],
   "context_message" : "Hey! You're picking up SolUnified. We just swapped the Screenshots grid for a dense Table view to improve utility. Selection now triggers a detail sheet with the image preview. Focus on keeping the 'Brutalist' aesthetic: high contrast, functional, no fluff. Speed to iterate is everything.",
-  "project" : "SolUnified",
-  "status" : "In Development",
   "architecture_notes" : {
     "ui_pattern" : "SwiftUI + AppKit bridge",
     "design_system" : "Brutalist (defined in BrutalistStyles.swift)",
@@ -73,5 +41,64 @@
       "sequences" : "Grouped events (sessions)",
       "api_sync" : "DataSyncService (JSON dumps + Agent notification)"
     }
+  },
+  "last_update" : "2026-01-01T18:00:56Z",
+  "project" : "SolUnified",
+  "recent_changes" : [
+    "Implemented Data Capture model: Sequences, Biofeedback, Learning Targets, Outcomes, Reflections",
+    "Added DataSyncService to export sequences for AI analysis",
+    "Updated Database schema with sequences table and sequence_id in activity_log",
+    "Replaced Screenshots LazyVGrid with Table",
+    "Added thumbnail, description, tags, and date columns to Screenshots table",
+    "Implemented sheet-based preview on table row selection",
+    "Removed unused ScreenshotCard component"
+  ],
+  "status" : "In Development",
+  "next_priorities" : [
+    "Add double-click to open screenshot in Finder",
+    "Implement multi-selection for bulk actions",
+    "Column-based sorting for the new Screenshots table"
+  ],
+  "memory" : {
+    "smart_summary" : {
+      "key_insights" : [
+
+      ],
+      "session_type" : "idle",
+      "focus_areas" : [
+
+      ],
+      "context_shifts" : 0,
+      "productivity_score" : 0
+    },
+    "data_sources" : {
+      "clipboard" : {
+        "last_count" : 100,
+        "last_hash" : "d29a1171a3842855e8a0d92f43428888f429d0085a7687b59c0d5594d1ca7c02",
+        "recent_activity" : "No new clipboard items",
+        "new_since_check" : 0
+      },
+      "notes" : {
+        "recent_activity" : "No note changes",
+        "new_since_check" : 0,
+        "last_count" : 0,
+        "last_hash" : ""
+      },
+      "screenshots" : {
+        "recent_activity" : "No new screenshots",
+        "last_hash" : "577db643c4878985508f0d87b0c5c5c301cf4dcbdedfa5cca3d09fd04b4e1242",
+        "last_count" : 100,
+        "new_since_check" : 0
+      },
+      "activity" : {
+        "last_active_app" : "",
+        "session_duration" : "0m",
+        "key_events" : [
+
+        ]
+      }
+    },
+    "last_check" : "2026-01-01T18:00:56Z",
+    "change_window" : "1h"
   }
 }
