@@ -1,5 +1,6 @@
 # Swift/SwiftPM
 .build/
+build/
 .swiftpm/
 *.xcodeproj/
 *.xcworkspace/
@@ -26,6 +27,8 @@ DerivedData/
 *.dylib
 *.dSYM
 *.product
+*.dmg
+dist/
 
 # Screenshot organizer backend (legacy - now native Swift)
 screenshot-organizer/backend/venv/

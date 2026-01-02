@@ -73,6 +73,8 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
 	<string>Sol Unified needs Apple Events permission for clipboard monitoring.</string>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>Sol Unified needs Accessibility permission for global hotkey support.</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 </dict>
 </plist>
 EOF
