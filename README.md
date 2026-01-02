@@ -1,3 +1,6 @@
+
+<img width="1013" height="495" alt="Screenshot 2026-01-02 at 11 29 46 AM" src="https://github.com/user-attachments/assets/031fe12a-ae46-4968-9b39-d1adaf5199fb" />
+
 # Sol Unified
 
 A native macOS app for unified personal context—clipboard, screenshots, activity tracking, notes, and terminal in one place. Built for vibe coders who want their AI agents to actually know what they're working on.
