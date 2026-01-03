@@ -23,6 +23,16 @@ class ActivityMonitor {
     private var trackedWindows: Set<String> = [] // Track window titles we've seen
     private var windowTrackingTimer: Timer?
     
+    // Enhanced metadata tracking
+    private var currentURL: String?
+    private var currentDocumentPath: String?
+    private var selectedText: String?
+    private var windowSessionEvents: Int = 0
+    
+    // Event sequence tracking
+    private var eventSequence: [(type: String, timestamp: Date, app: String?, window: String?)] = []
+    private let maxSequenceLength = 100
+    
     var onAppLaunch: ((NSRunningApplication) -> Void)?
     var onAppTerminate: ((NSRunningApplication) -> Void)?
     var onAppActivate: ((NSRunningApplication, NSRunningApplication?) -> Void)?
@@ -30,6 +40,8 @@ class ActivityMonitor {
     var onWindowClosed: ((String?) -> Void)?
     var onScreenSleep: (() -> Void)?
     var onScreenWake: (() -> Void)?
+    var onURLChange: ((String, String?) -> Void)? // URL, domain
+    var onDocumentChange: ((String, String?) -> Void)? // path, name
     
     private init() {}
     
@@ -162,12 +174,28 @@ class ActivityMonitor {
                 onWindowTitleChange?(title)
                 lastWindowTitle = title
                 lastWindowTitleTime = now
+                
+                // Reset window session events on window change
+                windowSessionEvents = 0
+                
+                // Record in sequence
+                recordSequenceEvent(type: "window_change", window: title)
+                
+                // Try to extract URL for browsers
+                if isBrowserApp(currentApp?.bundleIdentifier) {
+                    _ = extractBrowserURL()
+                }
+                
+                // Try to extract document path for apps that support it
+                _ = extractDocumentPath()
             }
         } else if title == nil && lastWindowTitle != nil {
             // Window title became unavailable (e.g., app closed)
             trackedWindows.remove(lastWindowTitle!)
             lastWindowTitle = nil
             lastWindowTitleTime = Date()
+            currentURL = nil
+            currentDocumentPath = nil
         }
     }
     
@@ -292,6 +320,189 @@ class ActivityMonitor {
     
     func getCurrentSessionStartTime() -> Date? {
         return currentSessionStartTime
+    }
+    
+    // MARK: - Enhanced Metadata Access
+    
+    func getCurrentURL() -> String? {
+        return currentURL
+    }
+    
+    func getCurrentDocumentPath() -> String? {
+        return currentDocumentPath
+    }
+    
+    func getEventSequence() -> [(type: String, timestamp: Date, app: String?, window: String?)] {
+        return eventSequence
+    }
+    
+    func getWindowSessionEventCount() -> Int {
+        return windowSessionEvents
+    }
+    
+    // MARK: - Sequence Recording
+    
+    func recordSequenceEvent(type: String, app: String? = nil, window: String? = nil) {
+        let event = (type: type, timestamp: Date(), app: app ?? currentApp?.localizedName, window: window ?? lastWindowTitle)
+        eventSequence.append(event)
+        
+        // Trim to max length
+        if eventSequence.count > maxSequenceLength {
+            eventSequence.removeFirst()
+        }
+        
+        windowSessionEvents += 1
+    }
+    
+    // MARK: - Browser URL Extraction (using Accessibility)
+    
+    func extractBrowserURL() -> String? {
+        guard let app = currentApp,
+              isBrowserApp(app.bundleIdentifier) else {
+            return nil
+        }
+        
+        // Try to get URL from accessibility API
+        let pid = app.processIdentifier
+        let appElement = AXUIElementCreateApplication(pid)
+        
+        // Get focused window
+        var focusedWindow: AnyObject?
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success,
+              let window = focusedWindow as! AXUIElement? else {
+            return nil
+        }
+        
+        // Try to find URL bar / address bar
+        // Different browsers use different accessibility structures
+        if let url = findURLInElement(window, maxDepth: 5) {
+            currentURL = url
+            
+            // Extract domain
+            if let urlObj = URL(string: url) {
+                onURLChange?(url, urlObj.host)
+            }
+            
+            return url
+        }
+        
+        return nil
+    }
+    
+    private func findURLInElement(_ element: AXUIElement, maxDepth: Int) -> String? {
+        guard maxDepth > 0 else { return nil }
+        
+        // Check if this element is a text field with URL-like content
+        var role: AnyObject?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        
+        if let roleStr = role as? String,
+           (roleStr == kAXTextFieldRole || roleStr == kAXTextAreaRole) {
+            
+            var value: AnyObject?
+            if AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
+               let text = value as? String {
+                // Check if it looks like a URL
+                if text.hasPrefix("http://") || text.hasPrefix("https://") || text.contains(".com") || text.contains(".org") {
+                    return text
+                }
+            }
+        }
+        
+        // Check for URL attribute directly (some apps expose this)
+        var urlAttr: AnyObject?
+        if AXUIElementCopyAttributeValue(element, "AXURL" as CFString, &urlAttr) == .success,
+           let url = urlAttr as? URL {
+            return url.absoluteString
+        }
+        
+        // Recurse into children
+        var children: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+              let childrenArray = children as? [AXUIElement] else {
+            return nil
+        }
+        
+        for child in childrenArray {
+            if let url = findURLInElement(child, maxDepth: maxDepth - 1) {
+                return url
+            }
+        }
+        
+        return nil
+    }
+    
+    private func isBrowserApp(_ bundleId: String?) -> Bool {
+        guard let bundleId = bundleId else { return false }
+        let browsers = [
+            "com.apple.Safari",
+            "com.google.Chrome",
+            "com.brave.Browser",
+            "org.mozilla.firefox",
+            "com.microsoft.edgemac",
+            "com.operasoftware.Opera",
+            "company.thebrowser.Browser" // Arc
+        ]
+        return browsers.contains(bundleId)
+    }
+    
+    // MARK: - Document Path Extraction
+    
+    func extractDocumentPath() -> String? {
+        guard let app = currentApp else { return nil }
+        
+        let pid = app.processIdentifier
+        let appElement = AXUIElementCreateApplication(pid)
+        
+        // Get focused window
+        var focusedWindow: AnyObject?
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success,
+              let window = focusedWindow as! AXUIElement? else {
+            return nil
+        }
+        
+        // Try to get document attribute
+        var document: AnyObject?
+        if AXUIElementCopyAttributeValue(window, kAXDocumentAttribute as CFString, &document) == .success,
+           let docPath = document as? String {
+            currentDocumentPath = docPath
+            
+            // Extract filename
+            let url = URL(fileURLWithPath: docPath)
+            onDocumentChange?(docPath, url.lastPathComponent)
+            
+            return docPath
+        }
+        
+        return nil
+    }
+    
+    // MARK: - Selection Tracking
+    
+    func getSelectedText() -> String? {
+        guard let app = currentApp else { return nil }
+        
+        let pid = app.processIdentifier
+        let appElement = AXUIElementCreateApplication(pid)
+        
+        // Get focused UI element
+        var focusedElement: AnyObject?
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement) == .success,
+              let element = focusedElement as! AXUIElement? else {
+            return nil
+        }
+        
+        // Try to get selected text
+        var selectedTextRange: AnyObject?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selectedTextRange) == .success,
+              let text = selectedTextRange as? String,
+              !text.isEmpty else {
+            return nil
+        }
+        
+        // Truncate for privacy
+        selectedText = String(text.prefix(200))
+        return selectedText
     }
     
     deinit {

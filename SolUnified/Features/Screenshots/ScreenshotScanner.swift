@@ -39,7 +39,8 @@ class ScreenshotScanner: ObservableObject {
     /// This is needed because when a screenshot appears, the app that was being screenshotted
     /// is usually NOT the frontmost app at detection time (macOS screen capture is active)
     private func startContextTracking() {
-        contextUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // 2.0s is sufficient for context capture, much better for battery
+        contextUpdateTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             
             // Don't update context if a system app (screenshot utility) is frontmost

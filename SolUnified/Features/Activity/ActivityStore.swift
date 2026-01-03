@@ -192,7 +192,7 @@ class ActivityStore: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             self?.events = results.map { self?.eventFromRow($0) ?? ActivityEvent(eventType: .heartbeat) }
             self?.updateEventsTodayCount()
-            self?.lastEventTime = self?.events.first?.timestamp
+            self?.lastEventTime = self?.events.last?.timestamp // newest is now last
         }
     }
     
@@ -211,7 +211,7 @@ class ActivityStore: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.events = loadedEvents
                 self?.updateEventsTodayCount()
-                self?.lastEventTime = self?.events.first?.timestamp
+                self?.lastEventTime = self?.events.last?.timestamp // newest is now last
             }
         }
     }
@@ -1089,7 +1089,8 @@ class ActivityStore: ObservableObject {
         }
         
         // Also check the events array as a fallback (though this might be stale)
-        if let lastEvent = events.first,
+        // Note: events are stored oldest-first, so newest is .last
+        if let lastEvent = events.last,
            lastEvent.eventType == .appActivate,
            lastEvent.appBundleId == bundleId,
            now.timeIntervalSince(lastEvent.timestamp) < appActivationDeduplicationWindow {
@@ -1147,7 +1148,8 @@ class ActivityStore: ObservableObject {
         }
         
         // Additional deduplication: Skip if we just logged a window title change for this app
-        if let lastEvent = events.first,
+        // Note: events are stored oldest-first, so newest is .last
+        if let lastEvent = events.last,
            lastEvent.eventType == .windowTitleChange,
            lastEvent.appBundleId == bundleId,
            lastEvent.windowTitle == title,
@@ -1324,11 +1326,13 @@ class ActivityStore: ObservableObject {
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.events.insert(event, at: 0)
+            // Use append (O(1)) instead of insert(at: 0) (O(n))
+            // Events are stored oldest-first, display reverses order
+            self.events.append(eventToLog)
             if self.events.count > 500 {
-                self.events.removeLast()
+                self.events.removeFirst() // Remove oldest, not newest
             }
-            self.lastEventTime = event.timestamp
+            self.lastEventTime = eventToLog.timestamp
             self.updateEventsTodayCount()
         }
     }

@@ -186,6 +186,10 @@ class ContextGraphManager: ObservableObject {
     private var windowMouseClicks: Int = 0
     private var windowScrollDistance: Double = 0
     
+    // Performance: track if analysis is needed
+    private var eventsSinceLastAnalysis: Int = 0
+    private var isIdle: Bool = false
+    
     // App categorization for context type inference
     private let appCategories: [String: ContextType] = [
         // Deep work / Creative
@@ -193,11 +197,14 @@ class ContextGraphManager: ObservableObject {
         "com.apple.dt.Xcode": .creative,
         "com.jetbrains.intellij": .creative,
         "com.sublimetext": .creative,
+        "com.todesktop.230313mzl4w4u92": .creative, // Cursor
+        "cursor": .creative,
         "com.figma.Desktop": .creative,
         "com.adobe.Photoshop": .creative,
         "com.adobe.illustrator": .creative,
         "com.notion.id": .creative,
         "com.obsidian": .creative,
+        "md.obsidian": .creative,
         
         // Communication
         "com.apple.MobileSMS": .communication,
@@ -263,12 +270,46 @@ class ContextGraphManager: ObservableObject {
         print("🧠 Context graph detection stopped")
     }
     
+    /// Close active context when user goes idle
+    private func closeActiveContextForIdle() {
+        guard var active = activeContext else { return }
+        
+        let now = Date()
+        active.endTime = now
+        active.isActive = false
+        updateNode(active)
+        activeContext = nil
+        
+        print("🧠 Context closed due to idle")
+    }
+    
     // MARK: - Event Processing
     
     /// Process an activity event and update context graph
     func processEvent(_ event: ActivityEvent) {
-        // Update recent apps tracking
+        // Handle idle events first - close context when idle starts
+        if event.eventType == .idleStart {
+            isIdle = true
+            closeActiveContextForIdle()
+            return
+        } else if event.eventType == .idleEnd {
+            isIdle = false
+            // Context will be created on next app activity
+            return
+        }
+        
+        // Skip processing during idle
+        if isIdle { return }
+        
+        // Track events for analysis optimization
+        eventsSinceLastAnalysis += 1
+        
+        // Update recent apps tracking - EXCLUDE Sol Unified itself to avoid self-pollution
         if let bundleId = event.appBundleId, let appName = event.appName {
+            // Skip Sol Unified's own events for context detection
+            let solBundleId = Bundle.main.bundleIdentifier ?? "com.solunified"
+            guard bundleId != solBundleId else { return }
+            
             recentApps.append((bundleId: bundleId, appName: appName, time: event.timestamp))
             // Keep last 50 events
             if recentApps.count > 50 {
@@ -348,7 +389,13 @@ class ContextGraphManager: ObservableObject {
     // MARK: - Context Analysis
     
     private func analyzeAndUpdateContext() {
+        // Performance: Skip if idle or no new events since last analysis
+        guard !isIdle else { return }
+        guard eventsSinceLastAnalysis > 0 else { return }
         guard !recentApps.isEmpty else { return }
+        
+        // Reset counter
+        eventsSinceLastAnalysis = 0
         
         let now = Date()
         let last5Min = recentApps.filter { now.timeIntervalSince($0.time) <= 300 }
@@ -674,13 +721,13 @@ class ContextGraphManager: ObservableObject {
     }
     
     private func edgeFromRow(_ row: [String: Any]) -> ContextEdge? {
-        guard let id = row["id"] as? String,
+        guard let _ = row["id"] as? String,
               let fromId = row["from_context_id"] as? String,
               let toId = row["to_context_id"] as? String,
               let typeRaw = row["edge_type"] as? String,
               let type = ContextEdgeType(rawValue: typeRaw),
               let timestampStr = row["timestamp"] as? String,
-              let timestamp = Database.stringToDate(timestampStr) else {
+              let _ = Database.stringToDate(timestampStr) else {
             return nil
         }
         

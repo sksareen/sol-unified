@@ -45,7 +45,8 @@ class ClipboardMonitor: ObservableObject {
             
             self.lastChangeCount = self.pasteboard.changeCount
             
-            self.timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            // Poll at 2.0s - sufficient for UX, much better for battery
+            self.timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
                 DispatchQueue.main.async {
                     self?.checkForChanges()
                 }
