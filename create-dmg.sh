@@ -32,6 +32,7 @@ echo "🧹 Cleaning up previous DMG..."
 rm -rf "$DMG_DIR"
 rm -f "$TEMP_DMG"
 rm -f "$FINAL_DMG"
+rm -f "$BUILD_DIR/$DMG_NAME.dmg"
 
 # Create DMG directory structure
 echo "📁 Creating DMG directory..."
