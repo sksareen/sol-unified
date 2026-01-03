@@ -56,6 +56,7 @@ class ActivityStore: ObservableObject {
     private let idleDetector = IdleDetector.shared
     private let inputMonitor = InputMonitor.shared
     private let internalTracker = InternalAppTracker.shared
+    private let contextGraph = ContextGraphManager.shared
     
     private var eventBuffer: [ActivityEvent] = []
     private let bufferSize = 50
@@ -110,6 +111,9 @@ class ActivityStore: ObservableObject {
         // Start Causal Inference Sensor (ValueComputer)
         ValueComputer.shared.startMonitoring()
         
+        // Start Context Graph for sequence and relationship tracking
+        contextGraph.startContextDetection()
+        
         // Setup internal app tracking callbacks
         setupInternalTrackingCallbacks()
         
@@ -151,6 +155,9 @@ class ActivityStore: ObservableObject {
         inputMonitor.stopMouseTracking()
         
         ValueComputer.shared.stopMonitoring()
+        
+        // Stop Context Graph
+        contextGraph.stopContextDetection()
         
         flushTimer?.invalidate()
         flushTimer = nil
@@ -1300,8 +1307,11 @@ class ActivityStore: ObservableObject {
         lastEventHash = eventHash
         lastDeduplicationTime = now
         
+        // Process through context graph for sequence/relationship tracking
+        contextGraph.processEvent(eventToLog)
+        
         bufferQueue.async { [weak self] in
-            self?.eventBuffer.append(event)
+            self?.eventBuffer.append(eventToLog)
             
             // Flush if buffer is full
             if let buffer = self?.eventBuffer, buffer.count >= self?.bufferSize ?? 50 {
@@ -1310,7 +1320,7 @@ class ActivityStore: ObservableObject {
         }
         
         // Log event
-        log.logEvent(event)
+        log.logEvent(eventToLog)
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }

@@ -27,8 +27,10 @@ class ScreenshotsStore: ObservableObject {
                     OR ai_tags LIKE ? 
                     OR ai_text_content LIKE ?
                     OR filename LIKE ?
+                    OR source_app_name LIKE ?
+                    OR source_window_title LIKE ?
                 """
-            parameters = ["%\(search)%", "%\(search)%", "%\(search)%", "%\(search)%"]
+            parameters = ["%\(search)%", "%\(search)%", "%\(search)%", "%\(search)%", "%\(search)%", "%\(search)%"]
         }
         
         sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
@@ -122,7 +124,10 @@ class ScreenshotsStore: ObservableObject {
             aiTags: row["ai_tags"] as? String,
             aiTextContent: row["ai_text_content"] as? String,
             analyzedAt: (row["analyzed_at"] as? String).flatMap { Database.stringToDate($0) },
-            analysisModel: row["analysis_model"] as? String
+            analysisModel: row["analysis_model"] as? String,
+            sourceAppBundleId: row["source_app_bundle_id"] as? String,
+            sourceAppName: row["source_app_name"] as? String,
+            sourceWindowTitle: row["source_window_title"] as? String
         )
     }
 }

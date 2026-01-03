@@ -93,8 +93,9 @@ class ValueComputer: ObservableObject {
             primaryActivity: primaryActivity
         )
         
+        let state = (focusScore, velocityScore, contextLabel)
         await MainActor.run {
-            self.lastState = (focusScore, velocityScore, contextLabel)
+            self.lastState = state
         }
     }
     

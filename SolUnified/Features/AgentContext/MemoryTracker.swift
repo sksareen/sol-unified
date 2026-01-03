@@ -122,10 +122,10 @@ class MemoryTracker: ObservableObject {
     // MARK: - Delta Generation
     
     private func generateScreenshotDelta(since: Date) -> DataSourceDelta {
-        // This would query the database for screenshots created since the timestamp
-        let recentCount = 0 // TODO: Implement actual query
-        let description = recentCount > 0 ? "\(recentCount) new screenshots" : "No new screenshots"
-        let significance = min(Double(recentCount) / 10.0, 1.0) // Scale 0-1
+        // TODO: Implement actual query
+        let recentCount = 0 
+        let description = "No new screenshots"
+        let significance = 0.0
         
         return DataSourceDelta(
             sourceType: "screenshots",
@@ -137,9 +137,10 @@ class MemoryTracker: ObservableObject {
     }
     
     private func generateClipboardDelta(since: Date) -> DataSourceDelta {
-        let recentCount = 0 // TODO: Implement actual query
-        let description = recentCount > 0 ? "\(recentCount) new clipboard items" : "No new clipboard items"
-        let significance = min(Double(recentCount) / 20.0, 1.0)
+        // TODO: Implement actual query
+        let recentCount = 0 
+        let description = "No new clipboard items"
+        let significance = 0.0
         
         return DataSourceDelta(
             sourceType: "clipboard",
@@ -151,9 +152,10 @@ class MemoryTracker: ObservableObject {
     }
     
     private func generateNoteDelta(since: Date) -> DataSourceDelta {
-        let recentCount = 0 // TODO: Implement actual query
-        let description = recentCount > 0 ? "\(recentCount) notes updated" : "No note changes"
-        let significance = min(Double(recentCount) / 5.0, 1.0)
+        // TODO: Implement actual query
+        let recentCount = 0 
+        let description = "No note changes"
+        let significance = 0.0
         
         return DataSourceDelta(
             sourceType: "notes",

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sol Unified — Personal Context for macOS</title>
+    <meta name="description" content="A native macOS app that unifies your clipboard, screenshots, activity, notes, and terminal. Free and open-source.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        /* Theme Variables - Nordic Minimalist */
+        :root {
+            --bg-color: #fafafa;
+            --bg-secondary: #f5f5f5;
+            --text-color: #1a1a1a;
+            --text-secondary: #606060;
+            --text-muted: #999;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --hover-bg: rgba(0, 0, 0, 0.03);
+            --card-bg: #fff;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --link-color: #0066cc;
+            --link-hover: rgba(0, 102, 204, 0.08);
+            --accent: #2563eb;
+            --accent-soft: rgba(37, 99, 235, 0.08);
+        }
+
+        body.dark-theme {
+            --bg-color: #0f0f0f;
+            --bg-secondary: #161616;
+            --text-color: #e8e8e8;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: #666;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --hover-bg: rgba(255, 255, 255, 0.03);
+            --card-bg: #1a1a1a;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --link-color: #6ba6ff;
+            --link-hover: rgba(107, 166, 255, 0.12);
+            --accent: #6ba6ff;
+            --accent-soft: rgba(107, 166, 255, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--text-secondary);
+            min-height: 100vh;
+            padding: 3rem 1.5rem;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            z-index: 100;
+            transition: all 0.2s ease;
+            box-shadow: var(--card-shadow);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .theme-toggle i {
+            transition: transform 0.3s ease;
+        }
+
+        body.dark-theme .theme-toggle:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-theme .theme-toggle i {
+            transform: rotate(180deg);
+        }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 2.5rem;
+            text-align: center;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-color);
+            letter-spacing: -0.02em;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Demo Section */
+        .demo {
+            margin: 2.5rem 0;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+            background: var(--card-bg);
+        }
+
+        .demo img {
+            width: 100%;
+            max-width: 400px;
+            max-height: 400px;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin: 2.5rem 0;
+            text-align: center;
+            box-shadow: var(--card-shadow);
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--text-color);
+            color: var(--bg-color);
+            padding: 0.9rem 1.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        body.dark-theme .download-btn:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .cta-note {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.95rem;
+            margin-top: 1.25rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .github-link:hover {
+            background: var(--link-hover);
+        }
+
+        /* Section styling */
+        section {
+            margin: 3rem 0;
+        }
+
+        h2 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Features Grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 540px) {
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            .theme-toggle {
+                top: 16px;
+                right: 16px;
+                width: 38px;
+                height: 38px;
+                font-size: 14px;
+            }
+        }
+
+        .feature {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.25rem;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .feature:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+        }
+
+        body.dark-theme .feature:hover {
+            box-shadow: 0 4px 12px rgba(107, 166, 255, 0.1);
+        }
+
+        .feature-name {
+            color: var(--text-color);
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .feature-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* About Section */
+        .about-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .about-text + .about-text {
+            margin-top: 1rem;
+        }
+
+        .about-text a {
+            color: var(--link-color);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+
+        .about-text a:hover {
+            border-color: var(--link-color);
+        }
+
+        /* Hotkey styling */
+        .hotkey {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        footer a:hover {
+            color: var(--link-color);
+        }
+
+        footer span {
+            margin: 0 0.5rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <i class="fa fa-moon-o"></i>
+    </button>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">☀</div>
+                <h1>Sol Unified</h1>
+            </div>
+            <p class="tagline">A personal context layer for macOS — clipboard, screenshots, activity, notes, and terminal, all in one place.</p>
+        </header>
+
+        <div class="demo">
+            <img src="demo.gif" alt="Sol Unified in action">
+        </div>
+
+        <div class="cta-section">
+            <a href="public/SolUnified-v1.1.dmg" class="download-btn">
+                <i class="fa fa-download"></i>
+                Download for macOS
+            </a>
+            <p class="cta-note">Requires macOS 13.0+ · Free & open-source</p>
+            <a href="https://github.com/sksareen/sol-unified" class="github-link">
+                <i class="fa fa-github"></i>
+                View on GitHub
+            </a>
+        </div>
+
+        <section>
+            <h2>What it does</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-name">Clipboard History</div>
+                    <div class="feature-desc">Never lose what you copied</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-name">Screenshots</div>
+                    <div class="feature-desc">Organized, searchable archive</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-name">Activity Tracking</div>
+                    <div class="feature-desc">Know where your time went</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-name">Markdown Vault</div>
+                    <div class="feature-desc">Your notes, right there</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-name">Terminal</div>
+                    <div class="feature-desc">Embedded shell access</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-name">Global Hotkey</div>
+                    <div class="feature-desc">Press <span class="hotkey">⌥ P</span> anywhere</div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>About</h2>
+            <p class="about-text">
+                Sol Unified is a personal project — a labor of love built on nights and weekends. 
+                I made it because I was tired of context switching between apps and constantly 
+                copy-pasting into AI tools. Everything stays local on your machine. No cloud, no subscription, no tracking.
+            </p>
+            <p class="about-text">
+                It's open-source and free. If you find it useful, consider 
+                <a href="https://github.com/sksareen/sol-unified">contributing on GitHub</a>. 
+                If you want to reach out, you can find me at <a href="https://savarsareen.com">savarsareen.com</a>.
+            </p>
+        </section>
+
+        <footer>
+            <p>
+                Made by <a href="https://savarsareen.com">Savar Sareen</a>
+                <span>·</span>
+                <a href="https://github.com/sksareen/sol-unified">GitHub</a>
+                <span>·</span>
+                Not affiliated with an employer
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function setTheme(isDark) {
+            document.body.classList.toggle('dark-theme', isDark);
+            themeToggle.querySelector('i').className = isDark ? 'fa fa-sun-o' : 'fa fa-moon-o';
+            localStorage.setItem('sol-theme', isDark ? 'dark' : 'light');
+        }
+
+        // Check for saved preference, otherwise use system preference
+        const savedTheme = localStorage.getItem('sol-theme');
+        if (savedTheme) {
+            setTheme(savedTheme === 'dark');
+        } else {
+            setTheme(prefersDark.matches);
+        }
+
+        // Toggle on click
+        themeToggle.addEventListener('click', () => {
+            setTheme(!document.body.classList.contains('dark-theme'));
+        });
+
+        // Listen for system preference changes
+        prefersDark.addEventListener('change', (e) => {
+            if (!localStorage.getItem('sol-theme')) {
+                setTheme(e.matches);
+            }
+        });
+
+        // Keyboard shortcut: Cmd+I
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+                setTheme(!document.body.classList.contains('dark-theme'));
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

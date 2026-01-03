@@ -62,9 +62,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Removed Tab key cycling - using individual tab shortcuts instead
         
-        // Start clipboard monitoring after a small delay to ensure app is ready
+        // Start monitoring after a small delay to ensure app is ready
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             ClipboardMonitor.shared.startMonitoring()
+            
+            // Start screenshot auto-monitoring
+            let screenshotsDir = AppSettings.shared.screenshotsDirectory
+            ScreenshotScanner.shared.startMonitoring(directory: screenshotsDir)
             
             // Start activity monitoring if enabled
             if AppSettings.shared.activityLoggingEnabled {
@@ -91,6 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Cleanup
         ClipboardMonitor.shared.stopMonitoring()
+        ScreenshotScanner.shared.stopMonitoring()
         ActivityStore.shared.stopMonitoring()
         hotkeyManager.unregister()
     }

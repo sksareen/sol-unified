@@ -119,6 +119,7 @@ struct TabNavigator: View {
             InternalAppTracker.shared.trackSettingsClose()
         }) {
             SettingsView()
+                .preferredColorScheme(settings.isDarkMode ? .dark : .light)
         }
         .onChange(of: settings.showSettings) { isOpen in
             if isOpen {
@@ -129,6 +130,8 @@ struct TabNavigator: View {
         .onAppear {
             tabFocused = true
         }
+        // Force color scheme based on app setting, not system
+        .preferredColorScheme(settings.isDarkMode ? .dark : .light)
     }
 }
 

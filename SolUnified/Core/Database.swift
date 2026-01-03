@@ -41,11 +41,17 @@ class Database {
                 print("Warning: Failed to enable WAL mode")
             }
             
-            result = createTablesSync()
+            // Create base tables first (without indexes that depend on columns that might not exist)
+            result = createBaseTablesSync()
             
-            // Perform migrations if needed
+            // Always run migrations to ensure schema is up to date
             if result {
                 performMigrationsSync()
+            }
+            
+            // Now create indexes (columns should exist after migrations)
+            if result {
+                createIndexesSync()
             }
         }
         return result
@@ -65,17 +71,115 @@ class Database {
                 print("Error adding sequence_id column")
             }
         }
+        
+        // Migration: Add source metadata columns to clipboard_history
+        let checkClipboardColumnSql = "PRAGMA table_info(clipboard_history);"
+        let clipboardColumns = querySync(checkClipboardColumnSql)
+        let hasClipboardSourceApp = clipboardColumns.contains { ($0["name"] as? String) == "source_app_bundle_id" }
+        
+        if !hasClipboardSourceApp {
+            print("Migrating: Adding source metadata to clipboard_history")
+            _ = executeSync("ALTER TABLE clipboard_history ADD COLUMN source_app_bundle_id TEXT")
+            _ = executeSync("ALTER TABLE clipboard_history ADD COLUMN source_app_name TEXT")
+            _ = executeSync("ALTER TABLE clipboard_history ADD COLUMN source_window_title TEXT")
+            print("Migration complete: clipboard_history source metadata columns added")
+        }
+        
+        // Migration: Add source metadata columns to screenshots
+        let checkScreenshotColumnSql = "PRAGMA table_info(screenshots);"
+        let screenshotColumns = querySync(checkScreenshotColumnSql)
+        let hasScreenshotSourceApp = screenshotColumns.contains { ($0["name"] as? String) == "source_app_bundle_id" }
+        
+        if !hasScreenshotSourceApp {
+            print("Migrating: Adding source metadata to screenshots")
+            _ = executeSync("ALTER TABLE screenshots ADD COLUMN source_app_bundle_id TEXT")
+            _ = executeSync("ALTER TABLE screenshots ADD COLUMN source_app_name TEXT")
+            _ = executeSync("ALTER TABLE screenshots ADD COLUMN source_window_title TEXT")
+            print("Migration complete: screenshots source metadata columns added")
+        }
+        
+        // Migration: Create context graph tables
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS context_nodes (
+                id TEXT PRIMARY KEY,
+                label TEXT NOT NULL,
+                type TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT,
+                is_active INTEGER DEFAULT 0,
+                apps TEXT,
+                window_titles TEXT,
+                event_count INTEGER DEFAULT 0,
+                focus_score REAL DEFAULT 0,
+                parent_context_id TEXT,
+                clipboard_hashes TEXT,
+                screenshot_filenames TEXT,
+                note_ids TEXT
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_context_nodes_start ON context_nodes(start_time DESC)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_context_nodes_active ON context_nodes(is_active)")
+        
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS context_edges (
+                id TEXT PRIMARY KEY,
+                from_context_id TEXT NOT NULL,
+                to_context_id TEXT NOT NULL,
+                edge_type TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                metadata TEXT,
+                FOREIGN KEY (from_context_id) REFERENCES context_nodes(id),
+                FOREIGN KEY (to_context_id) REFERENCES context_nodes(id)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_context_edges_timestamp ON context_edges(timestamp DESC)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_context_edges_from ON context_edges(from_context_id)")
+        
+        // Migration: Add context_id to activity_log for linking events to contexts
+        let checkActivityContextSql = "PRAGMA table_info(activity_log);"
+        let activityColumns = querySync(checkActivityContextSql)
+        let hasContextId = activityColumns.contains { ($0["name"] as? String) == "context_id" }
+        
+        if !hasContextId {
+            print("Migrating: Adding context_id to activity_log")
+            _ = executeSync("ALTER TABLE activity_log ADD COLUMN context_id TEXT")
+            _ = executeSync("ALTER TABLE activity_log ADD COLUMN enhanced_metadata TEXT")
+            print("Migration complete: activity_log context columns added")
+        }
+        
+        // Migration: Add context_id to clipboard_history
+        let checkClipboardContextSql = "PRAGMA table_info(clipboard_history);"
+        let clipboardContextColumns = querySync(checkClipboardContextSql)
+        let hasClipboardContextId = clipboardContextColumns.contains { ($0["name"] as? String) == "context_id" }
+        
+        if !hasClipboardContextId {
+            print("Migrating: Adding context_id to clipboard_history")
+            _ = executeSync("ALTER TABLE clipboard_history ADD COLUMN context_id TEXT")
+            print("Migration complete: clipboard_history context column added")
+        }
+        
+        // Migration: Add context_id to screenshots
+        let checkScreenshotContextSql = "PRAGMA table_info(screenshots);"
+        let screenshotContextColumns = querySync(checkScreenshotContextSql)
+        let hasScreenshotContextId = screenshotContextColumns.contains { ($0["name"] as? String) == "context_id" }
+        
+        if !hasScreenshotContextId {
+            print("Migrating: Adding context_id to screenshots")
+            _ = executeSync("ALTER TABLE screenshots ADD COLUMN context_id TEXT")
+            print("Migration complete: screenshots context column added")
+        }
     }
     
     private func createTables() -> Bool {
         var result: Bool = false
         dbQueue.sync {
-            result = self.createTablesSync()
+            result = self.createBaseTablesSync()
         }
         return result
     }
     
-    private func createTablesSync() -> Bool {
+    /// Create base tables only (no indexes) - indexes are created after migrations
+    private func createBaseTablesSync() -> Bool {
         let tables = [
             """
             CREATE TABLE IF NOT EXISTS notes (
@@ -87,7 +191,6 @@ class Database {
                 updated_at TEXT NOT NULL
             )
             """,
-            "CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC)",
             
             """
             CREATE TABLE IF NOT EXISTS clipboard_history (
@@ -100,7 +203,6 @@ class Database {
                 created_at TEXT NOT NULL
             )
             """,
-            "CREATE INDEX IF NOT EXISTS idx_clipboard_created ON clipboard_history(created_at DESC)",
             
             """
             CREATE TABLE IF NOT EXISTS screenshots (
@@ -120,8 +222,6 @@ class Database {
                 analysis_model TEXT
             )
             """,
-            "CREATE INDEX IF NOT EXISTS idx_screenshots_filename ON screenshots(filename)",
-            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)",
             
             """
             CREATE TABLE IF NOT EXISTS activity_log (
@@ -132,16 +232,10 @@ class Database {
                 window_title TEXT,
                 event_data TEXT,
                 timestamp TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                sequence_id TEXT
+                created_at TEXT NOT NULL
             )
             """,
-            "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
-            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)",
-            "CREATE INDEX IF NOT EXISTS idx_activity_sequence ON activity_log(sequence_id)",
             
-            // SEQUENCES TABLE
             """
             CREATE TABLE IF NOT EXISTS sequences (
                 id TEXT PRIMARY KEY,
@@ -152,30 +246,20 @@ class Database {
                 metadata TEXT
             )
             """,
-            "CREATE INDEX IF NOT EXISTS idx_sequences_start ON sequences(start_time DESC)",
             
-            // NEURAL VALUES TABLE (The Causal Panel)
             """
             CREATE TABLE IF NOT EXISTS neural_values (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
-                
-                -- OUTCOMES (Y)
                 focus_score REAL,
                 velocity_score REAL,
-                
-                -- TREATMENTS (T)
                 primary_activity TEXT,
                 intervention_active INTEGER DEFAULT 0,
-                
-                -- COVARIATES (X)
                 energy_level REAL,
                 context_label TEXT,
-                
                 created_at TEXT NOT NULL
             )
-            """,
-            "CREATE INDEX IF NOT EXISTS idx_neural_timestamp ON neural_values(timestamp DESC)"
+            """
         ]
         
         for sql in tables {
@@ -186,6 +270,30 @@ class Database {
         }
         
         return true
+    }
+    
+    /// Create indexes after migrations have ensured all columns exist
+    private func createIndexesSync() {
+        let indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_clipboard_created ON clipboard_history(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_clipboard_source_app ON clipboard_history(source_app_bundle_id)",
+            "CREATE INDEX IF NOT EXISTS idx_screenshots_filename ON screenshots(filename)",
+            "CREATE INDEX IF NOT EXISTS idx_screenshots_created ON screenshots(created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(event_type)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_app ON activity_log(app_bundle_id)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_sequence ON activity_log(sequence_id)",
+            "CREATE INDEX IF NOT EXISTS idx_sequences_start ON sequences(start_time DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_neural_timestamp ON neural_values(timestamp DESC)"
+        ]
+        
+        for sql in indexes {
+            if !executeSync(sql) {
+                print("Warning: Failed to create index: \(sql)")
+                // Don't fail on index creation - just log warning
+            }
+        }
     }
     
     @discardableResult
