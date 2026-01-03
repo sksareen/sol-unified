@@ -17,7 +17,7 @@ Sol Unified solves this by creating a **persistent, local context layer** that c
 - What you wrote → Markdown vault
 - What you ran → Embedded terminal
 
-Press `Option + \`` and everything is right there. No more app switching. No more copy-paste archaeology.
+Press `Option + p` and everything is right there. No more app switching. No more copy-paste archaeology.
 
 ---
 
