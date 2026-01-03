@@ -12,10 +12,10 @@ struct ContextView: View {
     @State private var selectedSection: ContextSection = .clipboard
     
     enum ContextSection: String, CaseIterable {
+        case activity = "ACTIVITY"
         case scratchpad = "SCRATCHPAD"
         case clipboard = "CLIPBOARD"
         case screenshots = "SCREENSHOTS"
-        case activity = "ACTIVITY"
     }
     
     var body: some View {
@@ -64,14 +64,14 @@ struct ContextView: View {
             // Content
             Group {
                 switch selectedSection {
+                case .activity:
+                    UnifiedActivityView()
                 case .scratchpad:
                     ScratchpadView()
                 case .clipboard:
                     ClipboardView()
                 case .screenshots:
                     ScreenshotsView()
-                case .activity:
-                    ActivityView()
                 }
             }
         }

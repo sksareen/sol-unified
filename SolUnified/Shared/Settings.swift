@@ -32,8 +32,8 @@ class AppSettings: ObservableObject {
     }
     
     func decreaseWindowSize() {
-        windowWidthPercent = max(windowWidthPercent - 5, 10)
-        windowHeightPercent = max(windowHeightPercent - 5, 10)
+        windowWidthPercent = max(windowWidthPercent - 5, 25)
+        windowHeightPercent = max(windowHeightPercent - 5, 25)
     }
     
     // Computed properties for actual pixel values
@@ -116,8 +116,8 @@ class AppSettings: ObservableObject {
     @Published var showSettings: Bool = false
     
     private init() {
-        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 50.0
-        self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 70.0
+        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 30.0
+        self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 85.0
         self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? false
         
         // Default screenshots directory - expand tilde
@@ -134,8 +134,8 @@ class AppSettings: ObservableObject {
     }
     
     func resetToDefaults() {
-        windowWidthPercent = 50.0
-        windowHeightPercent = 70.0
+        windowWidthPercent = 30.0
+        windowHeightPercent = 85.0
         isDarkMode = false
         screenshotsDirectory = NSHomeDirectory() + "/Pictures/Pics/Screenshots"
     }
@@ -276,7 +276,7 @@ struct SettingsView: View {
                                 .frame(width: 60, alignment: .leading)
                             LogSlider(
                                 value: $settings.windowWidthPercent,
-                                range: 10...100
+                                range: 25...100
                             )
                             Text("\(Int(settings.windowWidthPercent))%")
                                 .frame(width: 40, alignment: .trailing)
@@ -288,7 +288,7 @@ struct SettingsView: View {
                                 .frame(width: 60, alignment: .leading)
                             LogSlider(
                                 value: $settings.windowHeightPercent,
-                                range: 10...100
+                                range: 25...100
                             )
                             Text("\(Int(settings.windowHeightPercent))%")
                                 .frame(width: 40, alignment: .trailing)

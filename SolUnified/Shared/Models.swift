@@ -43,7 +43,12 @@ struct ClipboardItem: Identifiable, Codable {
     let contentHash: String
     let createdAt: Date
     
-    init(id: Int = 0, contentType: ContentType, contentText: String? = nil, contentPreview: String? = nil, filePath: String? = nil, contentHash: String, createdAt: Date = Date()) {
+    // Source context metadata (captured at copy time)
+    let sourceAppBundleId: String?
+    let sourceAppName: String?
+    let sourceWindowTitle: String?
+    
+    init(id: Int = 0, contentType: ContentType, contentText: String? = nil, contentPreview: String? = nil, filePath: String? = nil, contentHash: String, createdAt: Date = Date(), sourceAppBundleId: String? = nil, sourceAppName: String? = nil, sourceWindowTitle: String? = nil) {
         self.id = id
         self.contentType = contentType
         self.contentText = contentText
@@ -51,6 +56,9 @@ struct ClipboardItem: Identifiable, Codable {
         self.filePath = filePath
         self.contentHash = contentHash
         self.createdAt = createdAt
+        self.sourceAppBundleId = sourceAppBundleId
+        self.sourceAppName = sourceAppName
+        self.sourceWindowTitle = sourceWindowTitle
     }
 }
 
@@ -71,7 +79,12 @@ struct Screenshot: Identifiable, Codable {
     var analyzedAt: Date?
     var analysisModel: String?
     
-    init(id: Int = 0, filename: String, filepath: String, fileHash: String, fileSize: Int, createdAt: Date, modifiedAt: Date, width: Int, height: Int, aiDescription: String? = nil, aiTags: String? = nil, aiTextContent: String? = nil, analyzedAt: Date? = nil, analysisModel: String? = nil) {
+    // Provenance metadata - what was active when screenshot was taken
+    var sourceAppBundleId: String?
+    var sourceAppName: String?
+    var sourceWindowTitle: String?
+    
+    init(id: Int = 0, filename: String, filepath: String, fileHash: String, fileSize: Int, createdAt: Date, modifiedAt: Date, width: Int, height: Int, aiDescription: String? = nil, aiTags: String? = nil, aiTextContent: String? = nil, analyzedAt: Date? = nil, analysisModel: String? = nil, sourceAppBundleId: String? = nil, sourceAppName: String? = nil, sourceWindowTitle: String? = nil) {
         self.id = id
         self.filename = filename
         self.filepath = filepath
@@ -86,6 +99,9 @@ struct Screenshot: Identifiable, Codable {
         self.aiTextContent = aiTextContent
         self.analyzedAt = analyzedAt
         self.analysisModel = analysisModel
+        self.sourceAppBundleId = sourceAppBundleId
+        self.sourceAppName = sourceAppName
+        self.sourceWindowTitle = sourceWindowTitle
     }
 }
 

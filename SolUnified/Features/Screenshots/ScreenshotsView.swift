@@ -18,6 +18,7 @@ struct ScreenshotsView: View {
     @State private var showingStats = false
     @State private var scanMessage = ""
     @State private var isLoading = false
+    @State private var newScreenshotNotification: String?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -30,34 +31,30 @@ struct ScreenshotsView: View {
                 
                 Spacer()
                 
-                if !scanMessage.isEmpty {
+                if let notification = newScreenshotNotification {
+                    HStack(spacing: 4) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 9))
+                        Text(notification.uppercased())
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundColor(.green)
+                    .padding(.trailing, 8)
+                } else if !scanMessage.isEmpty {
                     Text(scanMessage.uppercased())
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(Color.brutalistAccent)
                         .padding(.trailing, 8)
                 }
                 
-                HStack(spacing: 8) {
-                    Button(action: {
-                        Task {
-                            await scanDirectory()
-                        }
-                    }) {
-                        Label("SCAN", systemImage: "magnifyingglass")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .buttonStyle(BrutalistSecondaryButtonStyle())
-                    .disabled(scanner.isScanning || isLoading)
-                    
-                    Button(action: {
-                        store.getStats()
-                        showingStats = true
-                    }) {
-                        Label("STATS", systemImage: "chart.bar.fill")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .buttonStyle(BrutalistSecondaryButtonStyle())
+                Button(action: {
+                    store.getStats()
+                    showingStats = true
+                }) {
+                    Label("STATS", systemImage: "chart.bar.fill")
+                        .font(.system(size: 10, weight: .bold))
                 }
+                .buttonStyle(BrutalistSecondaryButtonStyle())
             }
             .padding(16)
             .background(
@@ -115,7 +112,7 @@ struct ScreenshotsView: View {
                         .font(.system(size: Typography.headingSize))
                         .foregroundColor(Color.brutalistTextMuted)
                     
-                    Text("Click 'Scan' to index screenshots from your folder")
+                    Text("Screenshots are auto-captured when they appear in your folder")
                         .font(.system(size: Typography.bodySize))
                         .foregroundColor(Color.brutalistTextSecondary)
                     
@@ -147,9 +144,24 @@ struct ScreenshotsView: View {
                     
                     TableColumn("Name", value: \.filename)
                     
-                    TableColumn("Description") { screenshot in
-                        Text(screenshot.aiDescription ?? "-")
-                            .font(.system(size: Typography.bodySize))
+                    TableColumn("Source") { screenshot in
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let appName = screenshot.sourceAppName {
+                                Text(appName)
+                                    .font(.system(size: Typography.bodySize, weight: .medium))
+                                    .foregroundColor(Color.brutalistAccent)
+                            } else {
+                                Text("-")
+                                    .font(.system(size: Typography.bodySize))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                            }
+                            if let windowTitle = screenshot.sourceWindowTitle, !windowTitle.isEmpty {
+                                Text(windowTitle)
+                                    .font(.system(size: Typography.smallSize))
+                                    .foregroundColor(Color.brutalistTextMuted)
+                                    .lineLimit(1)
+                            }
+                        }
                     }
                     
                     TableColumn("Tags") { screenshot in
@@ -174,6 +186,18 @@ struct ScreenshotsView: View {
         }
         .onAppear {
             loadScreenshots()
+        }
+        .onChange(of: scanner.lastNewScreenshot?.filename) { newFilename in
+            // Auto-refresh when a new screenshot is detected
+            if let filename = newFilename {
+                newScreenshotNotification = "New: \(filename)"
+                store.loadScreenshots(search: searchText.isEmpty ? nil : searchText)
+                
+                // Clear notification after 3 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    newScreenshotNotification = nil
+                }
+            }
         }
         .sheet(item: $selectedScreenshot) { screenshot in
             ScreenshotDetailView(screenshot: screenshot)
@@ -268,6 +292,41 @@ struct ScreenshotDetailView: View {
                                     .foregroundColor(Color.brutalistTextMuted)
                             )
                             .cornerRadius(BorderRadius.md)
+                    }
+                    
+                    // Provenance Info (if available)
+                    if screenshot.sourceAppName != nil || screenshot.sourceWindowTitle != nil {
+                        VStack(alignment: .leading, spacing: Spacing.sm) {
+                            Text("CAPTURED FROM")
+                                .font(.system(size: Typography.smallSize, weight: .semibold))
+                                .foregroundColor(Color.brutalistTextMuted)
+                            
+                            HStack(spacing: Spacing.md) {
+                                if let appName = screenshot.sourceAppName {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "app.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(Color.brutalistAccent)
+                                        Text(appName)
+                                            .font(.system(size: Typography.bodySize, weight: .medium))
+                                            .foregroundColor(Color.brutalistTextPrimary)
+                                    }
+                                }
+                                
+                                if let windowTitle = screenshot.sourceWindowTitle, !windowTitle.isEmpty {
+                                    Text("•")
+                                        .foregroundColor(Color.brutalistTextMuted)
+                                    Text(windowTitle)
+                                        .font(.system(size: Typography.bodySize))
+                                        .foregroundColor(Color.brutalistTextSecondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.brutalistAccent.opacity(0.1))
+                        .cornerRadius(BorderRadius.sm)
                     }
                     
                     // Details

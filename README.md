@@ -1,46 +1,64 @@
 # Sol Unified
 
-A native macOS productivity app with AI agent integration, terminal emulation, and personal knowledge management.
+A native macOS app for unified personal context—clipboard, screenshots, activity tracking, notes, and terminal in one place. Built for vibe coders who want their AI agents to actually know what they're working on.
 
 ![Demo](demo.gif)
 
+## Why Sol Unified?
+
+The fundamental bottleneck in personal productivity isn't computation—it's **context**. 
+
+Every time you switch apps, your brain has to reconstruct what you were doing. Every time you paste something into ChatGPT, you lose the surrounding context. Every time you search for "that screenshot from yesterday," you're paying a tax on your attention.
+
+Sol Unified solves this by creating a **persistent, local context layer** that captures your work automatically:
+- What you copied → Clipboard history
+- What you saw → Screenshot archive with AI tagging
+- What you did → Activity log of apps and windows
+- What you wrote → Markdown vault
+- What you ran → Embedded terminal
+
+Press `Option + \`` and everything is right there. No more app switching. No more copy-paste archaeology.
+
+---
+
 ## Features
 
-### 📋 Tasks
-- Unified task management synced with agent_state.json
-- Assign tasks to different agents (Mable, Devon, Josh, Gunter, Kevin)
-- Filter by status (pending, in_progress, completed, archived)
-- Priority levels and project tagging
-- Live updates from agent system
+### 📋 Clipboard History
+- Automatic capture of text and images
+- Searchable history
+- Never lose what you copied
 
-### 🤖 Agents
-- View status of all active agents (Mable, Devon, Josh, Gunter, Kevin)
-- Real-time agent focus and activity tracking
-- Message log between agents
-- Manual sync and memory refresh controls
+### 📸 Screenshots
+- Organized screenshot archive
+- Local AI tagging (coming soon)
+- Quick search and retrieval
+
+### ⏱️ Activity Tracking
+- Log of app usage and window titles
+- Know where your time went
+- Data stays local—your privacy, your data
 
 ### 📚 Vault
-- Browse and edit markdown files from ~/Documents
-- Folder-based organization with expand/collapse
-- Search across all files
+- Browse and edit markdown files
+- Folder-based organization
 - WYSIWYG markdown editor
+- Search across all files
 - Collapsible sidebar (Cmd+B)
 
-### 🧠 Context
-- View AI context state
-- Recent changes and priorities
-- Architecture notes
-- Memory tracking of clipboard, screenshots, notes, activity
-
 ### 💻 Terminal
-- Embedded terminal emulator using SwiftTerm
+- Embedded terminal emulator (SwiftTerm)
 - Full shell access (zsh/bash)
-- Clear and new terminal session controls
+- Right alongside your context
 
-### 🎨 Appearance
-- Nordic minimalist tab design
-- Light and dark mode toggle
-- Clean, functional UI
+### 📝 Tasks
+- Simple task management
+- Syncs with `agent_state.json` for AI agent integration
+- Filter by status and priority
+
+### 🎨 Design
+- Brutalist, information-dense UI
+- Light and dark mode
+- Global hotkey access (`Option + \``)
 - Customizable window size
 
 ---
@@ -53,226 +71,172 @@ A native macOS productivity app with AI agent integration, terminal emulation, a
 
 ### Installation
 
-#### Option 1: Build from Source
-
-1. **Clone the repository:**
 ```bash
 git clone https://github.com/yourusername/sol-unified.git
 cd sol-unified
-```
-
-2. **Run the app:**
-```bash
 ./run.sh
 ```
 
-Or:
-```bash
-swift run
-```
+1. **Grant Accessibility permission** when prompted (required for global hotkey and activity tracking)
+2. **Press `Option + \``** to show/hide the window
 
-3. **Grant Accessibility permission** when prompted (required for global hotkey)
+That's it.
 
-4. **Press Option + `** (backtick) to show/hide the window
-
-#### Option 2: Build Distributable DMG
-
-To create a distributable DMG:
+### Build a DMG
 
 ```bash
 ./package.sh
 ```
 
-The DMG will be created at `.build/SolUnified-1.0.dmg`
+Creates `SolUnified-1.0.dmg` for distribution.
 
-For detailed distribution instructions, see [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)
+---
 
 ## Usage
 
 ### Global Hotkey
-- **Option + ` (backtick)**: Show/hide the app window
+- **Option + \` (backtick)**: Show/hide the app window
 
 ### Keyboard Shortcuts
-- **Cmd + 1**: Switch to Tasks tab
-- **Cmd + 2**: Switch to Agents tab
-- **Cmd + 3**: Switch to Vault tab
-- **Cmd + 4**: Switch to Context tab
-- **Cmd + 5**: Switch to Terminal tab
-- **Cmd + P**: Focus vault search
-- **Cmd + B**: Toggle vault sidebar
-- **Cmd + ,**: Open Settings
-- **Cmd + =**: Increase window size
-- **Cmd + -**: Decrease window size
-- **Esc**: Close modals/sheets
+| Shortcut | Action |
+|----------|--------|
+| `Cmd + 1-5` | Switch tabs |
+| `Cmd + P` | Focus vault search |
+| `Cmd + B` | Toggle vault sidebar |
+| `Cmd + ,` | Open Settings |
+| `Cmd + =/-` | Resize window |
+| `Esc` | Close modals |
 
-## Architecture
+---
 
-- **Language**: Swift 5.9+
-- **UI Framework**: SwiftUI with AppKit bridge
-- **Terminal**: SwiftTerm library
-- **Database**: SQLite3
-- **Hotkey System**: Carbon API
-- **Design**: Nordic minimalist aesthetic
+## How It Works
 
-## Project Structure
+Sol Unified creates a **shared state** architecture. Instead of every app being an island, it maintains a persistent context layer that any tool—including AI agents—can read.
+
+### Data Storage
 
 ```
-sol-unified/
-├── SolUnified/
-│   ├── App/
-│   │   ├── SolUnifiedApp.swift          # Main entry point
-│   │   └── AppDelegate.swift            # Window/hotkey management
-│   ├── Core/
-│   │   ├── WindowManager.swift          # Borderless window + animations
-│   │   ├── Database.swift               # SQLite wrapper
-│   │   └── HotkeyManager.swift          # Global hotkey registration
-│   ├── Features/
-│   │   ├── Tasks/                       # Task management
-│   │   ├── AgentContext/                # Agent system integration
-│   │   ├── Notes/                       # Vault & notes
-│   │   ├── Context/                     # AI context viewer
-│   │   ├── Terminal/                    # Terminal emulator
-│   │   ├── Clipboard/                   # Clipboard manager
-│   │   ├── Screenshots/                 # Screenshot organizer
-│   │   └── Activity/                    # Activity tracking
-│   └── Shared/
-│       ├── TabNavigator.swift           # Main tab switcher
-│       ├── BrutalistStyles.swift        # Design system
-│       ├── Settings.swift               # App settings
-│       └── Models.swift                 # Data models
-├── Package.swift                        # Swift Package Manager config
-├── run.sh                              # Quick run script
-└── README.md
+~/Library/Application Support/SolUnified/sol.db
 ```
 
-## Configuration
+Tables:
+- `clipboard_history` — Text and images you've copied
+- `screenshots` — Screenshot metadata and paths
+- `activity_logs` — App usage and window tracking
+- `notes` — Scratchpad and vault content
 
-### Agent System Integration
+### Agent Integration (Optional)
 
-Sol Unified reads from `~/Documents/agent_state.json` for task and agent synchronization. Example structure:
+If you're building AI agents, Sol Unified can sync with `agent_state.json`:
 
 ```json
 {
-  "active_agents": {
-    "mable": {
-      "status": "active",
-      "current_focus": "Orchestrating agent system",
-      "last_active": "2025-12-20T17:00:00-08:00"
-    }
-  },
   "tasks": {
     "task_001": {
-      "id": "task_001",
       "title": "Example task",
-      "description": "Task description",
-      "assigned_to": "mable",
       "status": "pending",
-      "priority": "high",
-      "project": "general"
+      "priority": "high"
     }
   }
 }
 ```
 
-### Vault Path
+Place this at `~/Documents/agent_state.json` and Sol Unified will read/write to it.
 
-By default, the vault browses `~/` (Home). You can modify this in **Settings** (Cmd + ,) under the **Vault** tab.
-
-## Database
-
-SQLite database stored at:
-```
-~/Library/Application Support/SolUnified/sol.db
-```
-
-### Tables
-- `notes`: Notes and scratchpad content
-- `clipboard_history`: Clipboard items
-- `screenshots`: Screenshot metadata
-- `activity_logs`: Activity tracking data
-
-## Troubleshooting
-
-### Hotkey not working or Activity Log empty
-- Check **Accessibility** permissions: System Settings → Privacy & Security → Accessibility
-- Check **Input Monitoring** permissions: System Settings → Privacy & Security → Input Monitoring (Required for Activity Log)
-- Add Sol Unified to allowed apps
-- Restart the app
-
-### Agent files not found
-- Ensure `~/Documents/agent_state.json` exists
-- Check file permissions
-- View logs in Terminal tab
-
-### Build errors
-```bash
-swift build
-```
-
-If you see errors, make sure you're using Swift 5.9+:
-```bash
-swift --version
-```
-
-## Development
-
-### Building
-```bash
-swift build
-```
-
-### Running
-```bash
-./run.sh
-```
-
-Or:
-```bash
-swift run
-```
-
-### Dependencies
-- SwiftTerm (terminal emulation)
-- Swift Argument Parser
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
 ## Roadmap
 
-### ✅ Phase 1: Core Productivity (Current)
-- Task management with agent integration
-- Terminal emulator
-- Vault for markdown notes
-- Context viewer
+### ✅ Phase 1: Core Context (Current)
+- [x] Clipboard history
+- [x] Screenshot organization
+- [x] Activity tracking
+- [x] Markdown vault
+- [x] Embedded terminal
+- [x] Global hotkey access
+- [x] Task management
 
-### 🔄 Phase 2: Enhanced Intelligence
-- AI-powered task suggestions
-- Context-aware agent routing
-- Smart note linking
-- Advanced search
+### 🔄 Phase 2: Enhanced Context
+- [ ] **Email capture** — Ingest and search email context
+- [ ] **Context graph** — Visualize relationships between your data
+- [ ] **Smart search** — AI-powered search across all context types
+- [ ] **Browser integration** — Capture tabs and reading history
 
-### 🚀 Phase 3: Collaboration
-- Multi-user agent coordination
-- Shared knowledge bases
-- Team task management
+### 🚀 Phase 3: Intelligence Layer
+- [ ] **Agent interface** — Built-in chat with context-aware AI
+- [ ] **Social network tracking** — Track relationships and interactions
+- [ ] **Automated tagging** — AI classification of all captured data
+- [ ] **Workflow triggers** — Actions based on context patterns
+
+---
+
+## Architecture
+
+```
+sol-unified/
+├── SolUnified/
+│   ├── App/                    # Entry point, window management
+│   ├── Core/                   # Database, hotkeys, window manager
+│   ├── Features/
+│   │   ├── Clipboard/          # Clipboard monitoring
+│   │   ├── Screenshots/        # Screenshot organization
+│   │   ├── Activity/           # App/window tracking
+│   │   ├── Notes/              # Vault and markdown editor
+│   │   ├── Terminal/           # SwiftTerm integration
+│   │   ├── Tasks/              # Task management
+│   │   └── Context/            # Context viewer
+│   └── Shared/                 # Design system, models, settings
+├── Package.swift
+└── run.sh
+```
+
+**Tech Stack:**
+- Swift 5.9+ / SwiftUI
+- SQLite3 for local storage
+- SwiftTerm for terminal
+- Carbon API for global hotkeys
+
+---
+
+## Troubleshooting
+
+### Hotkey not working?
+- System Settings → Privacy & Security → Accessibility → Add Sol Unified
+
+### Activity log empty?
+- System Settings → Privacy & Security → Input Monitoring → Add Sol Unified
+
+### Build errors?
+```bash
+swift --version  # Need 5.9+
+swift build
+```
+
+---
+
+## Contributing
+
+Contributions welcome! This is a personal project, but if you find it useful:
+
+1. Fork the repo
+2. Create a feature branch
+3. Submit a PR
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
+
+---
 
 ## Credits
 
 Built with inspiration from:
-- Raycast (command palette UX)
-- Warp (terminal design)
-- Obsidian (vault concept)
+- [Raycast](https://raycast.com) — Command palette UX
+- [Warp](https://warp.dev) — Terminal design
+- [Obsidian](https://obsidian.md) — Vault concept
+
+---
+
+*This is a personal hobby project. Not affiliated with an employer.*

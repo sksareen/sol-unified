@@ -183,8 +183,6 @@ struct LiveActivityStreamView: View {
 
 struct CurrentActivityCard: View {
     let session: LiveActivitySession
-    @State private var progress: Double = 0
-    @State private var timer: Timer?
     
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -211,29 +209,22 @@ struct CurrentActivityCard: View {
                     .lineLimit(1)
             }
             
-            // Animated progress bar (shows progress within current minute)
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.brutalistBgSecondary)
-                        .frame(height: 4)
-                    
-                    Rectangle()
-                        .fill(Color.brutalistAccent)
-                        .frame(width: geometry.size.width * min(progress, 1.0), height: 4)
-                        .animation(.linear(duration: 0.1), value: progress)
+            // Animated progress bar using TimelineView (efficient, no polling timer)
+            TimelineView(.periodic(from: .now, by: 1.0)) { timeline in
+                let currentProgress = calculateProgress()
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.brutalistBgSecondary)
+                            .frame(height: 4)
+                        
+                        Rectangle()
+                            .fill(Color.brutalistAccent)
+                            .frame(width: geometry.size.width * min(currentProgress, 1.0), height: 4)
+                            .animation(.easeInOut(duration: 0.3), value: currentProgress)
+                    }
                 }
-            }
-            .frame(height: 4)
-            .onAppear {
-                updateProgress()
-                timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                    updateProgress()
-                }
-            }
-            .onDisappear {
-                timer?.invalidate()
-                timer = nil
+                .frame(height: 4)
             }
         }
         .padding(Spacing.sm)
@@ -245,10 +236,10 @@ struct CurrentActivityCard: View {
         )
     }
     
-    private func updateProgress() {
+    private func calculateProgress() -> Double {
         let totalSeconds = session.duration
         let secondsInMinute = totalSeconds.truncatingRemainder(dividingBy: 60.0)
-        progress = secondsInMinute / 60.0 // Progress within current minute (0-1)
+        return secondsInMinute / 60.0 // Progress within current minute (0-1)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {

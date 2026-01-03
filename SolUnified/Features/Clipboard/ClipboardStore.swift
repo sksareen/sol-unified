@@ -17,7 +17,9 @@ class ClipboardStore: ObservableObject {
     private let maxItems = 100
     
     private init() {
+        print("📋 ClipboardStore: Initializing...")
         loadHistory()
+        print("📋 ClipboardStore: Initialized with \(items.count) items")
     }
     
     func loadHistory(limit: Int = 100) {
@@ -27,13 +29,14 @@ class ClipboardStore: ObservableObject {
         )
         
         items = results.map { itemFromRow($0) }
+        print("📋 ClipboardStore: Loaded \(items.count) items from history")
     }
     
     func saveItem(_ item: ClipboardItem) -> Bool {
         let sql = """
             INSERT OR IGNORE INTO clipboard_history 
-            (content_type, content_text, content_preview, file_path, content_hash, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (content_type, content_text, content_preview, file_path, content_hash, created_at, source_app_bundle_id, source_app_name, source_window_title)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
         
         let success = db.execute(sql, parameters: [
@@ -42,12 +45,18 @@ class ClipboardStore: ObservableObject {
             item.contentPreview ?? NSNull(),
             item.filePath ?? NSNull(),
             item.contentHash,
-            Database.dateToString(item.createdAt)
+            Database.dateToString(item.createdAt),
+            item.sourceAppBundleId ?? NSNull(),
+            item.sourceAppName ?? NSNull(),
+            item.sourceWindowTitle ?? NSNull()
         ])
         
         if success {
+            print("📋 ClipboardStore: Saved item (type: \(item.contentType.rawValue), preview: \(item.contentPreview ?? "nil"))")
             pruneOldItems()
             loadHistory()
+        } else {
+            print("📋 ClipboardStore: Failed to save item (type: \(item.contentType.rawValue))")
         }
         
         return success
@@ -61,11 +70,14 @@ class ClipboardStore: ObservableObject {
         let results = db.query(
             """
             SELECT * FROM clipboard_history 
-            WHERE content_text LIKE ? OR content_preview LIKE ?
+            WHERE content_text LIKE ? 
+               OR content_preview LIKE ?
+               OR source_app_name LIKE ?
+               OR source_window_title LIKE ?
             ORDER BY created_at DESC
             LIMIT 100
             """,
-            parameters: ["%\(query)%", "%\(query)%"]
+            parameters: ["%\(query)%", "%\(query)%", "%\(query)%", "%\(query)%"]
         )
         
         return results.map { itemFromRow($0) }
@@ -126,7 +138,10 @@ class ClipboardStore: ObservableObject {
             contentPreview: row["content_preview"] as? String,
             filePath: row["file_path"] as? String,
             contentHash: row["content_hash"] as? String ?? "",
-            createdAt: Database.stringToDate(row["created_at"] as? String ?? "") ?? Date()
+            createdAt: Database.stringToDate(row["created_at"] as? String ?? "") ?? Date(),
+            sourceAppBundleId: row["source_app_bundle_id"] as? String,
+            sourceAppName: row["source_app_name"] as? String,
+            sourceWindowTitle: row["source_window_title"] as? String
         )
     }
     
