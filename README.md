@@ -43,7 +43,7 @@ Press `Option + \`` and everything is right there. No more app switching. No mor
 - Folder-based organization
 - WYSIWYG markdown editor
 - Search across all files
-- Collapsible sidebar (Cmd+B)
+- Collapsible sidebar (Cmd+Shift+B)
 
 ### 💻 Terminal
 - Embedded terminal emulator (SwiftTerm)
@@ -72,7 +72,7 @@ Press `Option + \`` and everything is right there. No more app switching. No mor
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/sol-unified.git
+git clone https://github.com/sksareen/sol-unified.git
 cd sol-unified
 ./run.sh
 ```
@@ -95,14 +95,14 @@ Creates `SolUnified-1.0.dmg` for distribution.
 ## Usage
 
 ### Global Hotkey
-- **Option + \` (backtick)**: Show/hide the app window
+- **Option + p**: Show/hide the app window
 
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |----------|--------|
 | `Cmd + 1-5` | Switch tabs |
 | `Cmd + P` | Focus vault search |
-| `Cmd + B` | Toggle vault sidebar |
+| `Cmd + Shift + B` | Toggle vault sidebar |
 | `Cmd + ,` | Open Settings |
 | `Cmd + =/-` | Resize window |
 | `Esc` | Close modals |
