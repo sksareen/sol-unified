@@ -7,6 +7,11 @@ Improvements:
 3. Compaction - Limits memory size, archives old entries
 4. Persistence - Pending learnings saved to DB
 5. Relevance - Better retrieval using recency + frequency + similarity
+
+IMPORTANT: Raw data is NEVER deleted.
+- Summaries are created alongside raw data, not replacing it
+- Archived data is still queryable via explicit methods
+- All summaries link back to source IDs for drill-down
 """
 
 import json
@@ -375,6 +380,181 @@ class MemoryStoreV2:
 
         conn.close()
         return stats
+
+    # === RAW DATA ACCESS (never deleted, always available) ===
+
+    async def get_raw_messages(
+        self,
+        session_id: str,
+        include_summarized: bool = True,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 1000,
+    ) -> list[Message]:
+        """
+        Get raw message logs - ALL messages, including summarized ones.
+        Use this when you need the full conversation history.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        sql = "SELECT * FROM messages_v2 WHERE session_id = ?"
+        params = [session_id]
+
+        if not include_summarized:
+            sql += " AND is_summarized = 0"
+
+        if start_date:
+            sql += " AND timestamp >= ?"
+            params.append(start_date.isoformat())
+
+        if end_date:
+            sql += " AND timestamp <= ?"
+            params.append(end_date.isoformat())
+
+        sql += " ORDER BY timestamp ASC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [
+            Message(
+                role=row["role"],
+                content=row["content"],
+                timestamp=datetime.fromisoformat(row["timestamp"]),
+                metadata={
+                    **json.loads(row["metadata"]) if row["metadata"] else {},
+                    "is_summarized": bool(row["is_summarized"]),
+                    "message_id": row["id"],
+                },
+            )
+            for row in rows
+        ]
+
+    async def get_archived_memories(
+        self,
+        user_id: Optional[str] = None,
+        memory_type: Optional[MemoryType] = None,
+        limit: int = 100,
+    ) -> list[MemoryEntry]:
+        """
+        Get archived memories - old data that's been compacted but NOT deleted.
+        Use this when you need to drill into historical data.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        sql = "SELECT * FROM memory_entries_v2 WHERE is_archived = 1"
+        params = []
+
+        if user_id:
+            sql += " AND user_id = ?"
+            params.append(user_id)
+
+        if memory_type:
+            sql += " AND memory_type = ?"
+            params.append(memory_type.value)
+
+        sql += " ORDER BY updated_at DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [self._row_to_entry(row) for row in rows]
+
+    async def get_summary_sources(self, summary_id: str) -> list[MemoryEntry]:
+        """
+        Get the source memories that a summary was created from.
+        Allows drilling down from summary -> raw data.
+        """
+        summary = await self.get(summary_id, update_access=False)
+        if not summary or not summary.source_ids:
+            return []
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        placeholders = ",".join("?" * len(summary.source_ids))
+        cursor.execute(
+            f"SELECT * FROM memory_entries_v2 WHERE id IN ({placeholders})",
+            summary.source_ids
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [self._row_to_entry(row) for row in rows]
+
+    async def get_all_user_data(self, user_id: str) -> dict:
+        """
+        Export ALL data for a user - active, archived, messages, everything.
+        Use for data export, backup, or debugging.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        data = {
+            "user_id": user_id,
+            "exported_at": datetime.now().isoformat(),
+            "memories": {"active": [], "archived": []},
+            "sessions": {},
+        }
+
+        # All memories (active and archived)
+        cursor.execute(
+            "SELECT * FROM memory_entries_v2 WHERE user_id = ? ORDER BY created_at",
+            (user_id,)
+        )
+        for row in cursor.fetchall():
+            entry = self._row_to_entry(row)
+            bucket = "archived" if entry.is_archived else "active"
+            data["memories"][bucket].append(entry.to_dict())
+
+        # All messages from sessions associated with this user
+        cursor.execute(
+            """SELECT DISTINCT session_id FROM memory_entries_v2
+               WHERE user_id = ? AND session_id IS NOT NULL""",
+            (user_id,)
+        )
+        session_ids = [row["session_id"] for row in cursor.fetchall()]
+
+        for session_id in session_ids:
+            cursor.execute(
+                "SELECT * FROM messages_v2 WHERE session_id = ? ORDER BY timestamp",
+                (session_id,)
+            )
+            data["sessions"][session_id] = [
+                {
+                    "role": row["role"],
+                    "content": row["content"],
+                    "timestamp": row["timestamp"],
+                    "is_summarized": bool(row["is_summarized"]),
+                }
+                for row in cursor.fetchall()
+            ]
+
+        conn.close()
+        return data
+
+    async def restore_from_archive(self, memory_id: str) -> bool:
+        """
+        Restore an archived memory back to active status.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "UPDATE memory_entries_v2 SET is_archived = 0, updated_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), memory_id)
+        )
+        restored = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+
+        return restored
 
     # Pending learnings persistence
     async def save_pending_learning(self, entry: MemoryEntry) -> None:
@@ -945,3 +1125,123 @@ class MemoryManagerV2:
 
             for c in consolidated:
                 await self.store.save(c)
+
+    # === RAW DATA ACCESS (for when you need the full picture) ===
+
+    async def get_raw_conversation(
+        self,
+        session_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+    ) -> list[Message]:
+        """
+        Get the FULL raw conversation log for a session.
+        Includes all messages, even ones that have been summarized.
+
+        Use this when:
+        - Debugging what actually happened
+        - Exporting conversation history
+        - Need exact quotes, not summaries
+        """
+        return await self.store.get_raw_messages(
+            session_id=session_id,
+            include_summarized=True,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    async def get_archived_data(
+        self,
+        user_id: Optional[str] = None,
+        memory_type: Optional[MemoryType] = None,
+    ) -> list[MemoryEntry]:
+        """
+        Get archived/compacted memories.
+        These are old entries that were summarized or deduplicated.
+
+        Use this when:
+        - Need historical data
+        - Debugging why something was forgotten
+        - Auditing memory changes
+        """
+        return await self.store.get_archived_memories(user_id, memory_type)
+
+    async def drill_down_summary(self, summary_id: str) -> dict:
+        """
+        Drill down from a summary to its source data.
+
+        Returns the summary and all raw entries it was created from.
+        """
+        summary = await self.store.get(summary_id, update_access=False)
+        if not summary:
+            return {"error": "Summary not found"}
+
+        sources = await self.store.get_summary_sources(summary_id)
+
+        return {
+            "summary": summary.to_dict(),
+            "source_count": len(sources),
+            "sources": [s.to_dict() for s in sources],
+        }
+
+    async def export_all_data(self, user_id: str) -> dict:
+        """
+        Export ALL data for a user - nothing hidden.
+
+        Includes:
+        - All active memories
+        - All archived memories
+        - All raw conversation logs
+        - All summaries with source links
+
+        Use this for:
+        - Data portability
+        - Backup
+        - GDPR compliance
+        - Debugging
+        """
+        return await self.store.get_all_user_data(user_id)
+
+    async def restore_memory(self, memory_id: str) -> bool:
+        """
+        Restore an archived memory back to active status.
+
+        Use this when:
+        - Accidentally archived something important
+        - Need to bring back old context
+        """
+        return await self.store.restore_from_archive(memory_id)
+
+    async def search_all(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        include_archived: bool = True,
+    ) -> dict:
+        """
+        Search across ALL data - active, archived, and summarized.
+
+        Returns results grouped by status.
+        """
+        active = await self.store.search_relevant(
+            query=query,
+            user_id=user_id,
+            limit=20,
+        )
+
+        results = {
+            "active": [m.to_dict() for m in active],
+            "archived": [],
+        }
+
+        if include_archived:
+            archived = await self.store.get_archived_memories(user_id, limit=100)
+            # Filter archived by query
+            query_lower = query.lower()
+            matching_archived = [
+                m for m in archived
+                if query_lower in m.content.lower()
+            ]
+            results["archived"] = [m.to_dict() for m in matching_archived[:20]]
+
+        return results
