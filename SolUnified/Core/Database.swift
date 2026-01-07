@@ -162,12 +162,120 @@ class Database {
         let checkScreenshotContextSql = "PRAGMA table_info(screenshots);"
         let screenshotContextColumns = querySync(checkScreenshotContextSql)
         let hasScreenshotContextId = screenshotContextColumns.contains { ($0["name"] as? String) == "context_id" }
-        
+
         if !hasScreenshotContextId {
             print("Migrating: Adding context_id to screenshots")
             _ = executeSync("ALTER TABLE screenshots ADD COLUMN context_id TEXT")
             print("Migration complete: screenshots context column added")
         }
+
+        // MARK: - AI Agent Tables Migration
+
+        // Migration: Create contacts table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                nickname TEXT,
+                email TEXT,
+                phone TEXT,
+                relationship TEXT DEFAULT 'other',
+                company TEXT,
+                role TEXT,
+                notes TEXT,
+                preferences TEXT,
+                last_interaction TEXT,
+                interaction_count INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(name)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_contacts_relationship ON contacts(relationship)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_contacts_last_interaction ON contacts(last_interaction DESC)")
+
+        // Migration: Create contact_interactions table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS contact_interactions (
+                id TEXT PRIMARY KEY,
+                contact_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                summary TEXT,
+                timestamp TEXT NOT NULL,
+                context_node_id TEXT,
+                metadata TEXT,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_contact_interactions_contact ON contact_interactions(contact_id)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_contact_interactions_timestamp ON contact_interactions(timestamp DESC)")
+
+        // Migration: Create memories table (long-term facts/preferences)
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS memories (
+                id TEXT PRIMARY KEY,
+                category TEXT NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                confidence REAL DEFAULT 1.0,
+                source TEXT DEFAULT 'inferred',
+                last_confirmed TEXT,
+                usage_count INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_memories_key ON memories(key)")
+        _ = executeSync("CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_category_key ON memories(category, key)")
+
+        // Migration: Create conversations table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                status TEXT DEFAULT 'active',
+                context_snapshot TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)")
+
+        // Migration: Create chat_messages table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                tool_calls TEXT,
+                tool_results TEXT,
+                timestamp TEXT NOT NULL,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)")
+
+        // Migration: Create agent_actions table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS agent_actions (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT,
+                action_type TEXT NOT NULL,
+                parameters TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                result TEXT,
+                error TEXT,
+                created_at TEXT NOT NULL,
+                executed_at TEXT,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_agent_actions_status ON agent_actions(status)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_agent_actions_conversation ON agent_actions(conversation_id)")
     }
     
     private func createTables() -> Bool {

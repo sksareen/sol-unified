@@ -36,7 +36,10 @@ struct TabNavigator: View {
             
             TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
                 .keyboardShortcut("3", modifiers: .command)
-                
+
+            TabButton(title: "Agent", tab: .agent, selectedTab: $selectedTab)
+                .keyboardShortcut("4", modifiers: .command)
+
                 // Hidden shortcut for toggling terminal panel (⌘J)
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -127,6 +130,8 @@ struct TabNavigator: View {
                         VaultView()
                     case .context:
                         ContextView()
+                    case .agent:
+                        ChatView()
                     case .terminal:
                         // Legacy - redirect to vault if someone lands here
                         VaultView()

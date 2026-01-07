@@ -156,7 +156,21 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(openDailyNoteOnStartup, forKey: "openDailyNoteOnStartup")
         }
     }
-    
+
+    // Agent settings
+    @Published var claudeAPIKey: String {
+        didSet {
+            // Store in UserDefaults for simplicity (in production, use Keychain)
+            UserDefaults.standard.set(claudeAPIKey, forKey: "claudeAPIKey")
+        }
+    }
+
+    @Published var agentEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(agentEnabled, forKey: "agentEnabled")
+        }
+    }
+
     @Published var showSettings: Bool = false
     
     private init() {
@@ -193,6 +207,10 @@ class AppSettings: ObservableObject {
 
 """
         self.openDailyNoteOnStartup = UserDefaults.standard.object(forKey: "openDailyNoteOnStartup") as? Bool ?? true
+
+        // Agent settings
+        self.claudeAPIKey = UserDefaults.standard.string(forKey: "claudeAPIKey") ?? ""
+        self.agentEnabled = UserDefaults.standard.object(forKey: "agentEnabled") as? Bool ?? true
     }
     
     func resetToDefaults() {
@@ -211,13 +229,15 @@ struct SettingsView: View {
     
     enum SettingsTab: String, CaseIterable {
         case general = "General"
+        case agent = "Agent"
         case activity = "Activity"
         case screenshots = "Screenshots"
         case vault = "Vault"
-        
+
         var icon: String {
             switch self {
             case .general: return "gearshape"
+            case .agent: return "brain"
             case .activity: return "chart.line.uptrend.xyaxis"
             case .screenshots: return "camera.viewfinder"
             case .vault: return "folder"
@@ -297,6 +317,8 @@ struct SettingsView: View {
         switch selectedTab {
         case .general:
             generalView
+        case .agent:
+            agentView
         case .activity:
             activityView
         case .screenshots:
@@ -410,7 +432,100 @@ struct SettingsView: View {
             Spacer()
         }
     }
-    
+
+    var agentView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Agent")
+                .font(.system(size: 20, weight: .bold))
+
+            Form {
+                // API Key Section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Claude API Key")
+                        .font(.system(size: 13, weight: .semibold))
+
+                    SecureField("sk-ant-api03-...", text: $settings.claudeAPIKey)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .font(.system(size: 12, design: .monospaced))
+
+                    Text("Get your API key from console.anthropic.com")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    if !settings.claudeAPIKey.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 12))
+                            Text("API key configured")
+                                .font(.system(size: 11))
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Agent Settings
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Enable AI Agent", isOn: $settings.agentEnabled)
+                        .toggleStyle(SwitchToggleStyle())
+
+                    Text("When enabled, the Agent tab will be accessible")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Info Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("About the Agent")
+                        .font(.system(size: 13, weight: .semibold))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        featureRow(icon: "person.2", text: "Manages your contacts with preferences")
+                        featureRow(icon: "brain", text: "Remembers facts and learns from interactions")
+                        featureRow(icon: "calendar", text: "Can schedule meetings and check availability")
+                        featureRow(icon: "magnifyingglass", text: "Searches your work context intelligently")
+                    }
+                }
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Privacy note
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lock.shield")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+
+                    Text("Conversations and context are sent to Claude API for processing. Your data is not stored by Anthropic beyond the API call.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            .formStyle(.grouped)
+
+            Spacer()
+        }
+    }
+
+    private func featureRow(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(Color.brutalistAccent)
+                .frame(width: 16)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(Color.brutalistTextSecondary)
+        }
+    }
+
     var activityView: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Activity")

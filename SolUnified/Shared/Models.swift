@@ -548,5 +548,568 @@ enum AppTab: String {
     case vault
     case context
     case terminal
+    case agent  // AI Agent chat tab
+}
+
+// MARK: - Contact Models
+
+struct Contact: Identifiable, Codable {
+    let id: String
+    var name: String
+    var nickname: String?
+    var email: String?
+    var phone: String?
+    var relationship: ContactRelationship
+    var company: String?
+    var role: String?
+    var notes: String?
+    var preferences: ContactPreferences
+    var lastInteraction: Date?
+    var interactionCount: Int
+    let createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: String = UUID().uuidString,
+        name: String,
+        nickname: String? = nil,
+        email: String? = nil,
+        phone: String? = nil,
+        relationship: ContactRelationship = .other,
+        company: String? = nil,
+        role: String? = nil,
+        notes: String? = nil,
+        preferences: ContactPreferences = ContactPreferences(),
+        lastInteraction: Date? = nil,
+        interactionCount: Int = 0,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.nickname = nickname
+        self.email = email
+        self.phone = phone
+        self.relationship = relationship
+        self.company = company
+        self.role = role
+        self.notes = notes
+        self.preferences = preferences
+        self.lastInteraction = lastInteraction
+        self.interactionCount = interactionCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+enum ContactRelationship: String, Codable, CaseIterable {
+    case family
+    case friend
+    case colleague
+    case client
+    case acquaintance
+    case other
+
+    var displayName: String {
+        switch self {
+        case .family: return "Family"
+        case .friend: return "Friend"
+        case .colleague: return "Colleague"
+        case .client: return "Client"
+        case .acquaintance: return "Acquaintance"
+        case .other: return "Other"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .family: return "heart.fill"
+        case .friend: return "person.2.fill"
+        case .colleague: return "briefcase.fill"
+        case .client: return "building.2.fill"
+        case .acquaintance: return "person.fill"
+        case .other: return "person.crop.circle"
+        }
+    }
+}
+
+struct ContactPreferences: Codable {
+    var preferredContactMethod: ContactMethod?
+    var timezone: String?
+    var meetingPreferences: MeetingPreferences?
+    var communicationStyle: String?
+    var customFields: [String: String]
+
+    init(
+        preferredContactMethod: ContactMethod? = nil,
+        timezone: String? = nil,
+        meetingPreferences: MeetingPreferences? = nil,
+        communicationStyle: String? = nil,
+        customFields: [String: String] = [:]
+    ) {
+        self.preferredContactMethod = preferredContactMethod
+        self.timezone = timezone
+        self.meetingPreferences = meetingPreferences
+        self.communicationStyle = communicationStyle
+        self.customFields = customFields
+    }
+}
+
+enum ContactMethod: String, Codable, CaseIterable {
+    case email
+    case phone
+    case text
+    case slack
+    case other
+
+    var displayName: String {
+        switch self {
+        case .email: return "Email"
+        case .phone: return "Phone"
+        case .text: return "Text"
+        case .slack: return "Slack"
+        case .other: return "Other"
+        }
+    }
+}
+
+struct MeetingPreferences: Codable {
+    var preferredLocations: [String]
+    var preferredTimes: [String]
+    var durationMinutes: Int?
+    var notes: String?
+
+    init(
+        preferredLocations: [String] = [],
+        preferredTimes: [String] = [],
+        durationMinutes: Int? = nil,
+        notes: String? = nil
+    ) {
+        self.preferredLocations = preferredLocations
+        self.preferredTimes = preferredTimes
+        self.durationMinutes = durationMinutes
+        self.notes = notes
+    }
+}
+
+struct ContactInteraction: Identifiable, Codable {
+    let id: String
+    let contactId: String
+    let type: InteractionType
+    let summary: String
+    let timestamp: Date
+    let contextNodeId: String?
+    let metadata: String?
+
+    init(
+        id: String = UUID().uuidString,
+        contactId: String,
+        type: InteractionType,
+        summary: String,
+        timestamp: Date = Date(),
+        contextNodeId: String? = nil,
+        metadata: String? = nil
+    ) {
+        self.id = id
+        self.contactId = contactId
+        self.type = type
+        self.summary = summary
+        self.timestamp = timestamp
+        self.contextNodeId = contextNodeId
+        self.metadata = metadata
+    }
+}
+
+enum InteractionType: String, Codable, CaseIterable {
+    case meeting
+    case email
+    case call
+    case message
+    case note
+
+    var displayName: String {
+        switch self {
+        case .meeting: return "Meeting"
+        case .email: return "Email"
+        case .call: return "Call"
+        case .message: return "Message"
+        case .note: return "Note"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .meeting: return "person.2"
+        case .email: return "envelope"
+        case .call: return "phone"
+        case .message: return "message"
+        case .note: return "note.text"
+        }
+    }
+}
+
+// MARK: - Long-Term Memory Models
+
+struct Memory: Identifiable, Codable {
+    let id: String
+    var category: MemoryCategory
+    var key: String
+    var value: String
+    var confidence: Double
+    var source: MemorySource
+    var lastConfirmed: Date?
+    var usageCount: Int
+    let createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: String = UUID().uuidString,
+        category: MemoryCategory,
+        key: String,
+        value: String,
+        confidence: Double = 1.0,
+        source: MemorySource = .inferred,
+        lastConfirmed: Date? = nil,
+        usageCount: Int = 0,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.category = category
+        self.key = key
+        self.value = value
+        self.confidence = confidence
+        self.source = source
+        self.lastConfirmed = lastConfirmed
+        self.usageCount = usageCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+enum MemoryCategory: String, Codable, CaseIterable {
+    case userPreference
+    case routine
+    case relationship
+    case workContext
+    case location
+    case communication
+    case learned
+
+    var displayName: String {
+        switch self {
+        case .userPreference: return "Preference"
+        case .routine: return "Routine"
+        case .relationship: return "Relationship"
+        case .workContext: return "Work"
+        case .location: return "Location"
+        case .communication: return "Communication"
+        case .learned: return "Learned"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .userPreference: return "star.fill"
+        case .routine: return "clock.fill"
+        case .relationship: return "person.2.fill"
+        case .workContext: return "briefcase.fill"
+        case .location: return "location.fill"
+        case .communication: return "bubble.left.and.bubble.right.fill"
+        case .learned: return "brain"
+        }
+    }
+}
+
+enum MemorySource: String, Codable {
+    case userStated
+    case inferred
+    case imported
+    case agentLearned
+
+    var displayName: String {
+        switch self {
+        case .userStated: return "User stated"
+        case .inferred: return "Inferred"
+        case .imported: return "Imported"
+        case .agentLearned: return "Agent learned"
+        }
+    }
+}
+
+struct MemoryQuery {
+    let category: MemoryCategory?
+    let keywords: [String]
+    let minConfidence: Double
+    let limit: Int
+
+    init(
+        category: MemoryCategory? = nil,
+        keywords: [String] = [],
+        minConfidence: Double = 0.5,
+        limit: Int = 20
+    ) {
+        self.category = category
+        self.keywords = keywords
+        self.minConfidence = minConfidence
+        self.limit = limit
+    }
+}
+
+// MARK: - Conversation Models
+
+struct Conversation: Identifiable, Codable {
+    let id: String
+    var title: String?
+    var messages: [ChatMessage]
+    var status: ConversationStatus
+    var contextSnapshot: String?
+    let createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: String = UUID().uuidString,
+        title: String? = nil,
+        messages: [ChatMessage] = [],
+        status: ConversationStatus = .active,
+        contextSnapshot: String? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.messages = messages
+        self.status = status
+        self.contextSnapshot = contextSnapshot
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+enum ConversationStatus: String, Codable {
+    case active
+    case waitingForUser
+    case waitingForAction
+    case completed
+    case archived
+}
+
+struct ChatMessage: Identifiable, Codable {
+    let id: String
+    let role: MessageRole
+    let content: String
+    var toolCalls: [ToolCall]?
+    var toolResults: [ToolResult]?
+    let timestamp: Date
+
+    init(
+        id: String = UUID().uuidString,
+        role: MessageRole,
+        content: String,
+        toolCalls: [ToolCall]? = nil,
+        toolResults: [ToolResult]? = nil,
+        timestamp: Date = Date()
+    ) {
+        self.id = id
+        self.role = role
+        self.content = content
+        self.toolCalls = toolCalls
+        self.toolResults = toolResults
+        self.timestamp = timestamp
+    }
+}
+
+enum MessageRole: String, Codable {
+    case user
+    case assistant
+    case system
+    case tool
+}
+
+struct ToolCall: Identifiable, Codable {
+    let id: String
+    let toolName: String
+    let arguments: String
+
+    init(
+        id: String = UUID().uuidString,
+        toolName: String,
+        arguments: String
+    ) {
+        self.id = id
+        self.toolName = toolName
+        self.arguments = arguments
+    }
+}
+
+struct ToolResult: Codable {
+    let toolCallId: String
+    let result: String
+    let success: Bool
+
+    init(
+        toolCallId: String,
+        result: String,
+        success: Bool
+    ) {
+        self.toolCallId = toolCallId
+        self.result = result
+        self.success = success
+    }
+}
+
+// MARK: - Agent Action Models
+
+struct AgentAction: Identifiable, Codable {
+    let id: String
+    let conversationId: String?
+    let actionType: String
+    let parameters: String
+    var status: ActionStatus
+    var result: String?
+    var error: String?
+    let createdAt: Date
+    var executedAt: Date?
+
+    init(
+        id: String = UUID().uuidString,
+        conversationId: String? = nil,
+        actionType: String,
+        parameters: String,
+        status: ActionStatus = .pending,
+        result: String? = nil,
+        error: String? = nil,
+        createdAt: Date = Date(),
+        executedAt: Date? = nil
+    ) {
+        self.id = id
+        self.conversationId = conversationId
+        self.actionType = actionType
+        self.parameters = parameters
+        self.status = status
+        self.result = result
+        self.error = error
+        self.createdAt = createdAt
+        self.executedAt = executedAt
+    }
+}
+
+enum ActionStatus: String, Codable {
+    case pending
+    case inProgress
+    case completed
+    case failed
+    case cancelled
+}
+
+// MARK: - Agent Tool Definitions
+
+enum AgentTool: String, CaseIterable {
+    case lookupContact = "lookup_contact"
+    case searchMemory = "search_memory"
+    case checkCalendar = "check_calendar"
+    case createCalendarEvent = "create_calendar_event"
+    case sendEmail = "send_email"
+    case searchContext = "search_context"
+    case saveMemory = "save_memory"
+
+    var displayName: String {
+        switch self {
+        case .lookupContact: return "Lookup Contact"
+        case .searchMemory: return "Search Memory"
+        case .checkCalendar: return "Check Calendar"
+        case .createCalendarEvent: return "Create Calendar Event"
+        case .sendEmail: return "Send Email"
+        case .searchContext: return "Search Context"
+        case .saveMemory: return "Save Memory"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .lookupContact: return "Look up a contact by name to get their information"
+        case .searchMemory: return "Search long-term memory for facts and preferences"
+        case .checkCalendar: return "Check calendar availability for a date range"
+        case .createCalendarEvent: return "Create a new calendar event"
+        case .sendEmail: return "Compose and send an email"
+        case .searchContext: return "Search current work context and clipboard"
+        case .saveMemory: return "Save a new fact or preference to memory"
+        }
+    }
+}
+
+// MARK: - LLM Response Models
+
+struct LLMResponse {
+    let content: String
+    let toolCalls: [ToolCall]?
+    let finishReason: String?
+    let usage: LLMUsage?
+}
+
+struct LLMUsage {
+    let promptTokens: Int
+    let completionTokens: Int
+    let totalTokens: Int
+}
+
+// MARK: - Context Assembly Models
+
+struct AssembledContext {
+    let userQuery: String
+    let intent: QueryIntent
+    let memories: [Memory]
+    let contacts: [Contact]
+    let workContext: String?
+    let clipboardContext: String?
+    let conversationHistory: String?
+    let timestamp: Date
+}
+
+struct QueryIntent {
+    let type: IntentType
+    let entities: ExtractedEntities
+    let requiresTools: Bool
+    let requiresClipboard: Bool
+
+    init(
+        type: IntentType = .general,
+        entities: ExtractedEntities = ExtractedEntities(),
+        requiresTools: Bool = false,
+        requiresClipboard: Bool = false
+    ) {
+        self.type = type
+        self.entities = entities
+        self.requiresTools = requiresTools
+        self.requiresClipboard = requiresClipboard
+    }
+}
+
+enum IntentType: String {
+    case scheduleMeeting
+    case sendCommunication
+    case searchInformation
+    case createContent
+    case manageTask
+    case general
+}
+
+struct ExtractedEntities {
+    var keywords: [String]
+    var names: [String]
+    var dates: [String]
+    var locations: [String]
+
+    init(
+        keywords: [String] = [],
+        names: [String] = [],
+        dates: [String] = [],
+        locations: [String] = []
+    ) {
+        self.keywords = keywords
+        self.names = names
+        self.dates = dates
+        self.locations = locations
+    }
 }
 
