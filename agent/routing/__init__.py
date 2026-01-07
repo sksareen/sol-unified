@@ -31,6 +31,12 @@ from .memory import (
     MemoryStore,
     SQLiteMemoryStore,
 )
+from .memory_v2 import (
+    MemoryManagerV2,
+    MemoryStoreV2,
+    MemorySummarizer,
+    MemoryDeduplicator,
+)
 
 __all__ = [
     # Intents
@@ -48,7 +54,7 @@ __all__ = [
     "RoutingDecision",
     # Config
     "RoutingConfig",
-    # Memory
+    # Memory (v1)
     "MemoryManager",
     "SessionMemory",
     "UserMemory",
@@ -58,4 +64,9 @@ __all__ = [
     "Message",
     "MemoryStore",
     "SQLiteMemoryStore",
+    # Memory (v2 - improved)
+    "MemoryManagerV2",
+    "MemoryStoreV2",
+    "MemorySummarizer",
+    "MemoryDeduplicator",
 ]
