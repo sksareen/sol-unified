@@ -142,15 +142,23 @@ Phase 1 — Core import + local editors (3–5 weeks)
 - Local metadata store (Core Data) and simple UI for tagging/collections.
 - Clipboard capture and share-sheet action.
 
-Phase 2 — iOS app + sync (3–6 weeks)
+Phase 3 — UX & Workflow (Completed v1.3)
+- Vault root switching without reboot.
+- Daily notes automatic creation.
+- Slide-out terminal (Cmd+J).
+- Global font scaling.
+- Activity log unification.
+
+Phase 4 — Intelligence Layer & Embedding (Next)
+- Embed Claude Code / AI Agent directly into the app.
+- Unified interface for accessing all captured content via AI.
+- Context-aware chat sidebar.
+- Integrated agent execution within the local context.
+
+Phase 5 — Mobile & Curated Content
 - Build iOS app with import, tag, annotate, and collections.
-- Implement sync with CloudKit + Core Data (or custom backend sync endpoints).
+- Implement sync with CloudKit + Core Data.
 - Add offline support and conflict resolution UI.
-
-Phase 3 — Annotation & training export (2–4 weeks)
-- Add annotation editor (bounding boxes, labels), training export formats, and manifest generation.
-
-Phase 4 — Curated feed & clipping (3–6 weeks)
 - Integrate Unsplash/Pexels or implement a web clipper; add curated feed UX.
 - Add save-to-collection and licensing display.
 

@@ -185,11 +185,8 @@ struct UnifiedActivityView: View {
                 // Focus stats
                 focusStatsRow
                 
-                // Live activity section
+                // Live activity section (includes merged history)
                 liveActivitySection
-                
-                // Context timeline
-                contextTimeline
                 
                 // Context breakdown
                 if !filteredNodes.isEmpty {
@@ -231,50 +228,6 @@ struct UnifiedActivityView: View {
                 }
             }
             
-            // Brain Pulse (Real-time Neural State)
-            if let state = ValueComputer.shared.lastState {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("FOCUS")
-                            .font(.system(size: 9))
-                            .foregroundColor(.brutalistTextSecondary)
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Rectangle().fill(Color.brutalistBgTertiary)
-                                Rectangle()
-                                    .fill(Color.green)
-                                    .frame(width: g.size.width * state.focus)
-                            }
-                        }
-                        .frame(height: 4)
-                        .cornerRadius(2)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("VELOCITY")
-                            .font(.system(size: 9))
-                            .foregroundColor(.brutalistTextSecondary)
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Rectangle().fill(Color.brutalistBgTertiary)
-                                Rectangle()
-                                    .fill(Color.blue)
-                                    .frame(width: g.size.width * state.velocity)
-                            }
-                        }
-                        .frame(height: 4)
-                        .cornerRadius(2)
-                    }
-                    
-                    Text(state.context.uppercased())
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.brutalistBgTertiary)
-                        .cornerRadius(4)
-                }
-            }
-            
             // Current Activity
             if let current = activityStore.currentSession {
                 HStack(spacing: 10) {
@@ -302,39 +255,24 @@ struct UnifiedActivityView: View {
                 .cornerRadius(6)
             }
             
-            // Recent meaningful sessions
-            if !activityStore.meaningfulSessions.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+            // Unified Activity Log (Merged RECENT and CONTEXT HISTORY)
+            let logItems = getUnifiedLog()
+            if !logItems.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("RECENT")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.brutalistTextMuted)
+                        .padding(.top, 4)
                     
-                    ForEach(activityStore.meaningfulSessions.prefix(5)) { session in
-                        HStack(spacing: 8) {
-                            Text(formatDuration(session.duration))
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundColor(.brutalistTextPrimary)
-                                .frame(width: 40, alignment: .leading)
-                            
-                            Text(session.appName)
-                                .font(.system(size: 11))
-                                .foregroundColor(.brutalistTextPrimary)
-                                .lineLimit(1)
-                            
-                            if let windowTitle = session.windowTitle, !windowTitle.isEmpty {
-                                Text(windowTitle)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.brutalistTextMuted)
-                                    .lineLimit(1)
+                    VStack(spacing: 2) {
+                        ForEach(logItems.prefix(20)) { item in
+                            switch item {
+                            case .session(let session):
+                                unifiedSessionRow(session)
+                            case .context(let node):
+                                unifiedContextRow(node)
                             }
-                            
-                            Spacer()
-                            
-                            Text(formatTime(session.startTime))
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundColor(.brutalistTextMuted)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -342,6 +280,111 @@ struct UnifiedActivityView: View {
         .padding()
         .background(Color.brutalistBgSecondary)
         .cornerRadius(8)
+    }
+    
+    // MARK: - Unified Log Helpers
+    
+    enum UnifiedLogItem: Identifiable {
+        case session(MeaningfulSession)
+        case context(ContextNode)
+        
+        var id: String {
+            switch self {
+            case .session(let s): return "s-\(s.id)"
+            case .context(let c): return "c-\(c.id)"
+            }
+        }
+        
+        var startTime: Date {
+            switch self {
+            case .session(let s): return s.startTime
+            case .context(let c): return c.startTime
+            }
+        }
+    }
+    
+    private func getUnifiedLog() -> [UnifiedLogItem] {
+        var items: [UnifiedLogItem] = []
+        
+        // Add meaningful sessions (recent apps)
+        items.append(contentsOf: activityStore.meaningfulSessions.map { .session($0) })
+        
+        // Add context nodes (semantic blocks)
+        items.append(contentsOf: filteredNodes.map { .context($0) })
+        
+        // Sort by start time descending (newest first)
+        return items.sorted(by: { $0.startTime > $1.startTime })
+    }
+    
+    private func unifiedSessionRow(_ session: MeaningfulSession) -> some View {
+        HStack(spacing: 8) {
+            Text(formatDuration(session.duration))
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(.brutalistTextPrimary)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(Color.brutalistAccent.opacity(0.1))
+                .cornerRadius(3)
+                .frame(width: 40, alignment: .leading)
+            
+            Text(session.appName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.brutalistTextPrimary)
+                .frame(width: 100, alignment: .leading)
+                .lineLimit(1)
+            
+            if let windowTitle = session.windowTitle, !windowTitle.isEmpty {
+                Text(windowTitle)
+                    .font(.system(size: 10))
+                    .foregroundColor(.brutalistTextMuted)
+                    .lineLimit(1)
+            }
+            
+            Spacer()
+            
+            Text(formatTime(session.startTime))
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(.brutalistTextMuted)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .background(Color.brutalistBgPrimary.opacity(0.3))
+        .cornerRadius(4)
+    }
+    
+    private func unifiedContextRow(_ node: ContextNode) -> some View {
+        let isActive = node.id == graphManager.activeContext?.id
+        return HStack(spacing: 8) {
+            Circle()
+                .fill(node.type.color)
+                .frame(width: 6, height: 6)
+            
+            Text(node.label)
+                .font(.system(size: 11, weight: isActive ? .bold : .semibold))
+                .foregroundColor(.brutalistTextPrimary)
+                .lineLimit(1)
+            
+            Spacer()
+            
+            HStack(spacing: 12) {
+                Text("\(Int(node.focusScore * 100))%")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.brutalistTextMuted)
+                
+                Text(formatDuration(node.duration))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.brutalistTextMuted)
+                
+                Text(formatTime(node.startTime))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.brutalistTextMuted)
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .background(isActive ? node.type.color.opacity(0.1) : Color.clear)
+        .cornerRadius(4)
+        .onTapGesture { selectedNode = node }
     }
     
     private func formatCurrentDuration(_ duration: TimeInterval) -> String {
@@ -451,51 +494,6 @@ struct UnifiedActivityView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color.brutalistBgSecondary)
-        .cornerRadius(8)
-    }
-    
-    private var contextTimeline: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "timeline.selection")
-                    .foregroundColor(.brutalistAccent)
-                Text("CONTEXT HISTORY")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundColor(.brutalistTextMuted)
-                Spacer()
-            }
-            
-            if filteredNodes.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "brain")
-                        .font(.system(size: 28))
-                        .foregroundColor(.brutalistTextMuted)
-                    Text("No context history yet")
-                        .font(.system(size: 12))
-                        .foregroundColor(.brutalistTextSecondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 30)
-            } else {
-                LazyVStack(spacing: 6) {
-                    ForEach(filteredNodes.prefix(15)) { node in
-                        CompactContextRow(node: node, isActive: node.id == graphManager.activeContext?.id)
-                            .onTapGesture { selectedNode = node }
-                    }
-                    
-                    if filteredNodes.count > 15 {
-                        Text("+ \(filteredNodes.count - 15) more")
-                            .font(.system(size: 10))
-                            .foregroundColor(.brutalistTextMuted)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 8)
-                    }
-                }
-            }
-        }
-        .padding()
         .background(Color.brutalistBgSecondary)
         .cornerRadius(8)
     }
@@ -615,57 +613,3 @@ struct UnifiedActivityView: View {
         return Color(hex: "#ef4444")
     }
 }
-
-// MARK: - Compact Context Row
-
-struct CompactContextRow: View {
-    let node: ContextNode
-    let isActive: Bool
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(node.type.color)
-                .frame(width: 6, height: 6)
-            
-            Text(node.label)
-                .font(.system(size: 12, weight: isActive ? .semibold : .regular))
-                .foregroundColor(.brutalistTextPrimary)
-                .lineLimit(1)
-            
-            Spacer()
-            
-            Text("\(Int(node.focusScore * 100))%")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.brutalistTextMuted)
-            
-            Text(formatDuration(node.duration))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.brutalistTextMuted)
-            
-            Text(formatTime(node.startTime))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.brutalistTextMuted)
-        }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 8)
-        .background(isActive ? Color.brutalistBgTertiary.opacity(0.5) : Color.clear)
-        .cornerRadius(4)
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
-    }
-    
-    private func formatDuration(_ interval: TimeInterval) -> String {
-        let minutes = Int(interval / 60)
-        if minutes < 60 {
-            return "\(minutes)m"
-        }
-        return "\(minutes / 60)h\(minutes % 60)m"
-    }
-}
-
-

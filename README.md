@@ -229,14 +229,22 @@ Now any Claude instance can understand:
 - [x] **Idle-aware detection** — Smart pausing during breaks
 - [x] **Performance optimizations** — Battery-efficient monitoring
 
-### 🔄 Phase 3: Intelligence Layer (Next)
-- [ ] **Email capture** — Ingest and search email context
-- [ ] **Smart search** — AI-powered search across all context types
-- [ ] **Browser integration** — Capture tabs and reading history
-- [ ] **URL tracking** — Automatic capture of browser URLs
+### ✅ Phase 3: UX & Workflow (v1.3)
+- [x] **Dynamic Vault Management** — Change vault roots without rebooting
+- [x] **Daily Notes** — Automatic creation and opening of daily journal entries (Obsidian-style)
+- [x] **Slide-out Terminal** — Terminal now opens as a panel from the bottom (Cmd+J), similar to Cursor/Zed
+- [x] **Global Font Scaling** — Real-time font size adjustment (Cmd + =/-) across the app
+- [x] **Unified Activity Log** — Streamlined activity stream merging semantic contexts and app sessions
+- [x] **Performance UI** — Real-time rendering fixes and better Mac-native aesthetics
 
-### 🚀 Phase 4: Intelligence Layer
-- [ ] **Agent interface** — Built-in chat with context-aware AI
+### 🔄 Phase 4: Intelligence Layer (Next)
+- [ ] **Embedded Claude Code** — Direct integration of AI agents into the app sidebar/panel
+- [ ] **One-Place Content Access** — Chat with your context, clipboard, and notes in a single interface
+- [ ] **Smart search** — AI-powered search across all context types
+- [ ] **Email capture** — Ingest and search email context
+
+### 🚀 Phase 5: Advanced Intelligence
+- [ ] **Browser integration** — Capture tabs and reading history
 - [ ] **Social network tracking** — Track relationships and interactions
 - [ ] **Automated tagging** — AI classification of all captured data
 - [ ] **Workflow triggers** — Actions based on context patterns

@@ -11,7 +11,7 @@ echo ""
 
 # Configuration
 APP_NAME="Sol Unified"
-VERSION="1.2"
+VERSION="1.3"
 BUILD_DIR=".build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 DMG_NAME="SolUnified-v$VERSION"

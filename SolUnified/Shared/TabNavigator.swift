@@ -357,7 +357,7 @@ struct TabButton: View {
                 Spacer()
                 
                 Text(title)
-                    .font(.system(size: settings.globalFontSize, weight: isSelected ? .medium : .regular))
+                    .font(.system(size: 15, weight: isSelected ? .bold : .medium))
                     .foregroundColor(isSelected ? Color.primary : Color.secondary.opacity(0.6))
                     .padding(.bottom, 10)
                 
