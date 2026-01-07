@@ -6,11 +6,12 @@ The router takes classification results and:
 2. Handles fallbacks and error cases
 3. Supports middleware for pre/post processing
 4. Manages conversation flow and context
+5. Integrates with memory system for persistent context
 """
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, Callable, Any, Awaitable
+from typing import Optional, Callable, Any, Awaitable, TYPE_CHECKING
 from enum import Enum
 
 from .intents import Intent, IntentCategory, IntentRegistry
@@ -20,6 +21,9 @@ from .classifiers import (
     RuleBasedClassifier,
     LocalLLMClassifier,
 )
+
+if TYPE_CHECKING:
+    from .memory import MemoryManager
 
 
 class RoutingOutcome(Enum):
@@ -104,6 +108,7 @@ class Router:
         classifier: Optional[EnsembleClassifier] = None,
         confidence_threshold: float = 0.5,
         clarification_threshold: float = 0.3,
+        memory_manager: Optional["MemoryManager"] = None,
     ):
         self.registry = registry or IntentRegistry()
 
@@ -121,6 +126,9 @@ class Router:
 
         self.confidence_threshold = confidence_threshold
         self.clarification_threshold = clarification_threshold
+
+        # Memory system
+        self.memory = memory_manager
 
         # Handler registry
         self._handlers: dict[str, RouteHandler] = {}
@@ -225,7 +233,13 @@ class Router:
         """Get current context."""
         return self._context.copy()
 
-    async def route(self, text: str, context: Optional[dict] = None) -> RoutingDecision:
+    async def route(
+        self,
+        text: str,
+        context: Optional[dict] = None,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> RoutingDecision:
         """
         Route user input to the appropriate handler.
 
@@ -234,6 +248,8 @@ class Router:
         Args:
             text: User input text
             context: Optional additional context
+            session_id: Session ID for memory persistence
+            user_id: User ID for user-specific memory
 
         Returns:
             RoutingDecision with outcome and result
@@ -243,13 +259,24 @@ class Router:
         # Merge context
         full_context = {**self._context, **(context or {})}
 
+        # Load memory context if available
+        if self.memory and session_id:
+            memory_context = await self.memory.build_context(
+                session_id=session_id,
+                user_id=user_id,
+                include_learned=True,
+            )
+            full_context.update(memory_context)
+            full_context["session_id"] = session_id
+            full_context["user_id"] = user_id
+
         # Run pre-middleware
         for middleware in self._pre_middleware:
             try:
                 result = await middleware(text, None, full_context)
                 if result:
                     # Middleware provided classification, skip classifier
-                    return await self._handle_classification(text, result, full_context, 0.0)
+                    return await self._handle_classification(text, result, full_context, 0.0, session_id, user_id)
             except Exception as e:
                 pass  # Middleware errors don't stop routing
 
@@ -268,7 +295,7 @@ class Router:
                 pass
 
         return await self._handle_classification(
-            text, classification, full_context, classification_time
+            text, classification, full_context, classification_time, session_id, user_id
         )
 
     async def _handle_classification(
@@ -277,6 +304,8 @@ class Router:
         classification: ClassificationResult,
         context: dict,
         classification_time: float,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> RoutingDecision:
         """Handle a classification result."""
         import time
@@ -318,6 +347,17 @@ class Router:
         try:
             result = await route_handler.handler(text, classification, context)
             handling_time = (time.time() - start_time) * 1000
+
+            # Record interaction to memory
+            if self.memory and session_id:
+                response_text = str(result) if not isinstance(result, str) else result
+                await self.memory.record_interaction(
+                    session_id=session_id,
+                    user_input=text,
+                    assistant_response=response_text,
+                    user_id=user_id,
+                    extract_facts=True,
+                )
 
             return RoutingDecision(
                 outcome=RoutingOutcome.HANDLED,
