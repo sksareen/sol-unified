@@ -108,7 +108,7 @@ struct LineSpacing {
 // MARK: - Border Radius
 struct BorderRadius {
     static let sm: CGFloat = 4
-    static let md: CGFloat = 8
+    static let md: CGFloat = 15  // Mac-like window radius
     static let lg: CGFloat = 12
 }
 

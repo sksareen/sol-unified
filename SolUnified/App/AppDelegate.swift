@@ -12,6 +12,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowManager: WindowManager?
     var hotkeyManager = HotkeyManager.shared
     var memoryTracker = MemoryTracker.shared
+    var contextExporter = ContextExporter.shared
+    var contextAPIServer = ContextAPIServer.shared
     var statusItem: NSStatusItem?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -78,10 +80,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Start memory tracking for agent intelligence
             print("🧠 Starting memory tracking for agent bridge")
             self.memoryTracker.updateContextFile() // Initial update
-            
+
+            // Start context export for AI agent consumption
+            print("📤 Starting context export to ~/Documents/sol-context/")
+            self.contextExporter.startAutoExport(interval: 30.0)
+
+            // Start HTTP API server for real-time context access
+            print("🌐 Starting Context API server on http://localhost:7654")
+            self.contextAPIServer.start(port: 7654)
+
             // Cleanup old activity logs based on retention setting
             let retentionDays = AppSettings.shared.activityLogRetentionDays
             _ = Database.shared.cleanupOldActivityLogs(olderThan: retentionDays)
+            
+            // Open today's daily note on startup if enabled
+            if AppSettings.shared.openDailyNoteOnStartup {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenTodaysNote"), object: nil)
+                }
+            }
         }
         
         print("Sol Unified started successfully")
@@ -97,6 +114,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ClipboardMonitor.shared.stopMonitoring()
         ScreenshotScanner.shared.stopMonitoring()
         ActivityStore.shared.stopMonitoring()
+        contextExporter.stopAutoExport()
+        contextAPIServer.stop()
         hotkeyManager.unregister()
     }
     

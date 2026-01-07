@@ -84,12 +84,14 @@ struct TerminalView: View {
                 // Split view - show two terminals side by side
                 HSplitView {
                     if let leftTab = terminalStore.leftTab {
-                        TerminalPane(tab: leftTab, isActive: terminalStore.selectedTabId == leftTab.id)
-                            .onTapGesture { terminalStore.selectTab(leftTab.id) }
+                        TerminalPane(tab: leftTab, isActive: terminalStore.selectedTabId == leftTab.id, onActivate: {
+                            terminalStore.selectTab(leftTab.id)
+                        })
                     }
                     if let rightTab = terminalStore.rightTab {
-                        TerminalPane(tab: rightTab, isActive: terminalStore.selectedTabId == rightTab.id)
-                            .onTapGesture { terminalStore.selectTab(rightTab.id) }
+                        TerminalPane(tab: rightTab, isActive: terminalStore.selectedTabId == rightTab.id, onActivate: {
+                            terminalStore.selectTab(rightTab.id)
+                        })
                     }
                 }
             } else {
@@ -108,10 +110,11 @@ struct TerminalView: View {
 struct TerminalPane: View {
     let tab: TerminalTab
     let isActive: Bool
+    var onActivate: (() -> Void)? = nil
     
     var body: some View {
         VStack(spacing: 0) {
-            // Pane header
+            // Pane header - clicking here activates the pane
             HStack {
                 Text(tab.title)
                     .font(.system(size: 10, weight: .medium))
@@ -121,8 +124,11 @@ struct TerminalPane: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(isActive ? Color.brutalistAccent.opacity(0.1) : Color.black.opacity(0.3))
+            .onTapGesture {
+                onActivate?()
+            }
             
-            TerminalViewWrapper(terminal: tab.terminal)
+            TerminalViewWrapper(terminal: tab.terminal, onActivate: onActivate)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.black)
@@ -196,12 +202,68 @@ struct TerminalTabButton: View {
 
 struct TerminalViewWrapper: NSViewRepresentable {
     let terminal: SolTerminalView
+    var onActivate: (() -> Void)? = nil
     
-    func makeNSView(context: Context) -> SolTerminalView {
-        return terminal
+    func makeNSView(context: Context) -> NSView {
+        // Wrap in a container that handles keyboard events properly
+        let container = TerminalContainerView(terminal: terminal, onActivate: onActivate)
+        return container
     }
     
-    func updateNSView(_ nsView: SolTerminalView, context: Context) {
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Ensure terminal stays first responder when view updates
+        if let container = nsView as? TerminalContainerView {
+            container.window?.makeFirstResponder(container.terminal)
+        }
+    }
+}
+
+/// Container view that ensures the terminal becomes first responder and receives keyboard events
+class TerminalContainerView: NSView {
+    let terminal: SolTerminalView
+    var onActivate: (() -> Void)?
+    
+    init(terminal: SolTerminalView, onActivate: (() -> Void)? = nil) {
+        self.terminal = terminal
+        self.onActivate = onActivate
+        super.init(frame: .zero)
+        self.autoresizesSubviews = true
+        terminal.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(terminal)
+        
+        NSLayoutConstraint.activate([
+            terminal.topAnchor.constraint(equalTo: topAnchor),
+            terminal.bottomAnchor.constraint(equalTo: bottomAnchor),
+            terminal.leadingAnchor.constraint(equalTo: leadingAnchor),
+            terminal.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func becomeFirstResponder() -> Bool {
+        // When container becomes first responder, forward to terminal
+        window?.makeFirstResponder(terminal)
+        return true
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(terminal)
+        onActivate?()
+        terminal.mouseDown(with: event)
+    }
+    
+    // Forward keyboard events to terminal
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        return terminal.performKeyEquivalent(with: event)
+    }
+    
+    override func keyDown(with event: NSEvent) {
+        terminal.keyDown(with: event)
     }
 }
 
@@ -218,30 +280,70 @@ class SolTerminalView: LocalProcessTerminalView {
     
     private func setupContextMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Copy", action: #selector(copy(_:)), keyEquivalent: "c")
-        menu.addItem(withTitle: "Paste", action: #selector(paste(_:)), keyEquivalent: "v")
+        menu.addItem(withTitle: "Copy", action: #selector(doCopy(_:)), keyEquivalent: "c")
+        menu.addItem(withTitle: "Paste", action: #selector(doPaste(_:)), keyEquivalent: "v")
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(withTitle: "Select All", action: #selector(selectAll(_:)), keyEquivalent: "a")
         menu.addItem(NSMenuItem.separator())
         menu.addItem(withTitle: "Clear", action: #selector(clearTerminal), keyEquivalent: "k")
         self.menu = menu
+    }
+    
+    // Validate menu items - enable our custom actions
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        switch item.action {
+        case #selector(doCopy(_:)):
+            // Always enable - copy does nothing if no selection
+            return true
+        case #selector(doPaste(_:)):
+            // Enable if clipboard has text
+            return NSPasteboard.general.string(forType: .string) != nil
+        case #selector(clearTerminal):
+            return true
+        case #selector(selectAll(_:)):
+            return true
+        default:
+            return super.validateUserInterfaceItem(item)
+        }
     }
     
     @objc func clearTerminal() {
         self.send(txt: "clear\n")
     }
     
+    @objc func doCopy(_ sender: Any?) {
+        // Call the parent class's copy method which handles selection and clipboard
+        super.copy(sender as Any)
+    }
+    
+    @objc func doPaste(_ sender: Any?) {
+        // Get text from clipboard and send directly to terminal
+        if let text = NSPasteboard.general.string(forType: .string) {
+            self.send(txt: text)
+        }
+    }
+    
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.contains(.command) {
-            if let chars = event.charactersIgnoringModifiers {
-                if chars == "c" {
-                    copy(self)
-                    return true
-                } else if chars == "v" {
-                    paste(self)
-                    return true
-                } else if chars == "k" {
-                    clearTerminal()
-                    return true
-                }
+        guard event.modifierFlags.contains(.command) else {
+            return super.performKeyEquivalent(with: event)
+        }
+        
+        if let chars = event.charactersIgnoringModifiers {
+            switch chars {
+            case "c":
+                doCopy(self)
+                return true
+            case "v":
+                doPaste(self)
+                return true
+            case "a":
+                selectAll(self)
+                return true
+            case "k":
+                clearTerminal()
+                return true
+            default:
+                break
             }
         }
         return super.performKeyEquivalent(with: event)
@@ -255,19 +357,36 @@ struct TerminalTab: Identifiable {
     let terminal: SolTerminalView
     var title: String
     
-    init(title: String = "zsh") {
+    init(title: String = "zsh", workingDirectory: String? = nil) {
         self.id = UUID()
         self.terminal = SolTerminalView(frame: .zero)
         self.title = title
-        
-        terminal.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+
+        let fontSize = AppSettings.shared.globalFontSize
+        terminal.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         terminal.nativeForegroundColor = NSColor.white
         terminal.nativeBackgroundColor = NSColor.black
         terminal.configureNativeColors()
         terminal.getTerminal().silentLog = true
-        
+
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         terminal.startProcess(executable: shell, args: ["-l"])
+
+        // Change to context directory so Claude Code has immediate access to context
+        // Default to ~/Documents/sol-context where the CLAUDE.md and context.json live
+        let contextDir = workingDirectory ?? NSString("~/Documents/sol-context").expandingTildeInPath
+        if FileManager.default.fileExists(atPath: contextDir) {
+            let terminalRef = terminal  // Capture terminal, not self (struct)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                terminalRef.send(txt: "cd \"\(contextDir)\" && clear\n")
+            }
+        }
+        
+        // Listen for font size changes
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("GlobalFontSizeChanged"), object: nil, queue: .main) { [weak terminal] _ in
+            let newSize = AppSettings.shared.globalFontSize
+            terminal?.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+        }
     }
 }
 

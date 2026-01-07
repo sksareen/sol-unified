@@ -26,14 +26,31 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var globalFontSize: CGFloat {
+        didSet {
+            UserDefaults.standard.set(globalFontSize, forKey: "globalFontSize")
+            InternalAppTracker.shared.trackSettingChange(key: "globalFontSize", value: "\(Int(globalFontSize))")
+            // Post notification for views to update
+            NotificationCenter.default.post(name: NSNotification.Name("GlobalFontSizeChanged"), object: nil)
+        }
+    }
+    
+    func increaseFontSize() {
+        globalFontSize = min(globalFontSize + 1, 24)
+    }
+    
+    func decreaseFontSize() {
+        globalFontSize = max(globalFontSize - 1, 10)
+    }
+    
     func increaseWindowSize() {
         windowWidthPercent = min(windowWidthPercent + 5, 100)
-        windowHeightPercent = min(windowHeightPercent + 5, 100)
+        windowHeightPercent = min(windowHeightPercent + 5, 96)
     }
     
     func decreaseWindowSize() {
-        windowWidthPercent = max(windowWidthPercent - 5, 25)
-        windowHeightPercent = max(windowHeightPercent - 5, 25)
+        windowWidthPercent = max(windowWidthPercent - 5, 35)
+        windowHeightPercent = max(windowHeightPercent - 5, 50)
     }
     
     // Computed properties for actual pixel values
@@ -113,11 +130,39 @@ class AppSettings: ObservableObject {
         }
     }
     
+    // Daily Notes settings
+    @Published var dailyNoteDateFormat: String {
+        didSet {
+            UserDefaults.standard.set(dailyNoteDateFormat, forKey: "dailyNoteDateFormat")
+            InternalAppTracker.shared.trackSettingChange(key: "dailyNoteDateFormat", value: dailyNoteDateFormat)
+        }
+    }
+    
+    @Published var dailyNoteFolder: String {
+        didSet {
+            UserDefaults.standard.set(dailyNoteFolder, forKey: "dailyNoteFolder")
+            InternalAppTracker.shared.trackSettingChange(key: "dailyNoteFolder", value: dailyNoteFolder)
+        }
+    }
+    
+    @Published var dailyNoteTemplate: String {
+        didSet {
+            UserDefaults.standard.set(dailyNoteTemplate, forKey: "dailyNoteTemplate")
+        }
+    }
+    
+    @Published var openDailyNoteOnStartup: Bool {
+        didSet {
+            UserDefaults.standard.set(openDailyNoteOnStartup, forKey: "openDailyNoteOnStartup")
+        }
+    }
+    
     @Published var showSettings: Bool = false
     
     private init() {
-        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 30.0
+        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 40.0
         self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 85.0
+        self.globalFontSize = UserDefaults.standard.object(forKey: "globalFontSize") as? CGFloat ?? 13.0
         self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? false
         
         // Default screenshots directory - expand tilde
@@ -131,11 +176,29 @@ class AppSettings: ObservableObject {
         self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
         self.keyboardTrackingEnabled = UserDefaults.standard.bool(forKey: "keyboardTrackingEnabled")
         self.mouseTrackingEnabled = UserDefaults.standard.bool(forKey: "mouseTrackingEnabled")
+        
+        // Daily notes settings
+        self.dailyNoteDateFormat = UserDefaults.standard.string(forKey: "dailyNoteDateFormat") ?? "MM-dd-yyyy"
+        self.dailyNoteFolder = UserDefaults.standard.string(forKey: "dailyNoteFolder") ?? "Journal/daily_notes"
+        self.dailyNoteTemplate = UserDefaults.standard.string(forKey: "dailyNoteTemplate") ?? """
+##### *[my list](my-list)*
+---
+#### mantras
+
+
+#### journal
+
+
+#### lessons learned
+
+"""
+        self.openDailyNoteOnStartup = UserDefaults.standard.object(forKey: "openDailyNoteOnStartup") as? Bool ?? true
     }
     
     func resetToDefaults() {
-        windowWidthPercent = 30.0
+        windowWidthPercent = 40.0
         windowHeightPercent = 85.0
+        globalFontSize = 13.0
         isDarkMode = false
         screenshotsDirectory = NSHomeDirectory() + "/Pictures/Pics/Screenshots"
     }
@@ -265,6 +328,33 @@ struct SettingsView: View {
                 
                 Divider()
                 
+                // Font Size
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Font Size")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    HStack {
+                        Text("Size:")
+                            .frame(width: 60, alignment: .leading)
+                        Slider(value: $settings.globalFontSize, in: 10...24, step: 1)
+                            .accentColor(Color.brutalistAccent)
+                        Text("\(Int(settings.globalFontSize))pt")
+                            .frame(width: 40, alignment: .trailing)
+                            .font(.system(size: 12, design: .monospaced))
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "command")
+                            .font(.system(size: 10))
+                        Text("+/- to adjust")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                
+                Divider()
+                
                 // Window Size
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Window Size")
@@ -276,7 +366,7 @@ struct SettingsView: View {
                                 .frame(width: 60, alignment: .leading)
                             LogSlider(
                                 value: $settings.windowWidthPercent,
-                                range: 25...100
+                                range: 35...100
                             )
                             Text("\(Int(settings.windowWidthPercent))%")
                                 .frame(width: 40, alignment: .trailing)
@@ -288,7 +378,7 @@ struct SettingsView: View {
                                 .frame(width: 60, alignment: .leading)
                             LogSlider(
                                 value: $settings.windowHeightPercent,
-                                range: 25...100
+                                range: 50...96
                             )
                             Text("\(Int(settings.windowHeightPercent))%")
                                 .frame(width: 40, alignment: .trailing)
@@ -428,6 +518,76 @@ struct SettingsView: View {
                     Text("Select the root folder for your vault notes")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                
+                Divider()
+                
+                // Daily Notes Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Daily Notes")
+                        .font(.system(size: 13, weight: .semibold))
+                    
+                    // Date Format
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Date Format")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        TextField("MM-dd-yyyy", text: $settings.dailyNoteDateFormat)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(size: 11, design: .monospaced))
+                        
+                        Text("Preview: \(DailyNoteManager.shared.formatDate(Date(), format: settings.dailyNoteDateFormat))")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Daily Notes Folder
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Daily Notes Folder")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        TextField("Journal/daily_notes", text: $settings.dailyNoteFolder)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(size: 11, design: .monospaced))
+                        
+                        Text("Relative to vault root")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Template
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Template")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        TextEditor(text: $settings.dailyNoteTemplate)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 100)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    
+                    // Open on Startup
+                    Toggle("Open today's note on startup", isOn: $settings.openDailyNoteOnStartup)
+                        .toggleStyle(SwitchToggleStyle())
+                    
+                    // Quick access hint
+                    HStack(spacing: 4) {
+                        Image(systemName: "command")
+                            .font(.system(size: 10))
+                        Text("T")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("to open today's note")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
                 }
                 .padding(.vertical, 8)
             }

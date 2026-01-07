@@ -1,0 +1,513 @@
+#!/usr/bin/env python3
+"""
+sol-context: CLI tool for querying Sol Unified context from any terminal.
+
+Usage:
+    sol-context              # Quick summary of current context
+    sol-context full         # Full JSON context
+    sol-context clipboard    # Recent clipboard items
+    sol-context activity     # Recent activity
+    sol-context search TERM  # Search across all context
+    sol-context --help       # Show help
+
+Any Claude Code agent can run this to understand what you're working on.
+"""
+
+import sqlite3
+import json
+import os
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+# Paths
+DB_PATH = os.path.expanduser("~/Library/Application Support/SolUnified/sol.db")
+CONTEXT_DIR = os.path.expanduser("~/Documents/sol-context")
+COMPACT_PATH = os.path.join(CONTEXT_DIR, "context-compact.md")
+FULL_PATH = os.path.join(CONTEXT_DIR, "context.json")
+
+
+def get_db_connection():
+    """Get a read-only connection to the Sol Unified database."""
+    if not os.path.exists(DB_PATH):
+        return None
+    return sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+
+
+def format_time_ago(timestamp_str: str) -> str:
+    """Convert ISO timestamp to human-readable 'X ago' format."""
+    try:
+        # Handle various ISO formats
+        for fmt in ["%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S"]:
+            try:
+                dt = datetime.strptime(timestamp_str.replace("+00:00", "Z").rstrip("Z"), fmt.rstrip("Z"))
+                break
+            except ValueError:
+                continue
+        else:
+            return timestamp_str
+        
+        diff = datetime.now() - dt
+        
+        if diff.total_seconds() < 60:
+            return "just now"
+        elif diff.total_seconds() < 3600:
+            mins = int(diff.total_seconds() / 60)
+            return f"{mins}m ago"
+        elif diff.total_seconds() < 86400:
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours}h ago"
+        else:
+            days = int(diff.total_seconds() / 86400)
+            return f"{days}d ago"
+    except Exception:
+        return timestamp_str
+
+
+def cmd_summary():
+    """Show a quick summary of current context."""
+    # First try the compact markdown file (most up-to-date)
+    if os.path.exists(COMPACT_PATH):
+        with open(COMPACT_PATH) as f:
+            content = f.read()
+            # Check freshness
+            mtime = os.path.getmtime(COMPACT_PATH)
+            age = datetime.now().timestamp() - mtime
+            if age < 120:  # Less than 2 minutes old
+                print(content)
+                return
+    
+    # Fall back to database query
+    conn = get_db_connection()
+    if not conn:
+        print("⚠️  Sol Unified database not found. Is Sol Unified installed?")
+        return
+    
+    cursor = conn.cursor()
+    
+    # Get active context
+    cursor.execute("""
+        SELECT label, type, focus_score, apps, start_time, event_count
+        FROM context_nodes 
+        WHERE is_active = 1
+        ORDER BY start_time DESC
+        LIMIT 1
+    """)
+    active = cursor.fetchone()
+    
+    print("# Sol Unified Context\n")
+    
+    if active:
+        label, ctx_type, focus, apps_json, start_time, events = active
+        try:
+            apps = json.loads(apps_json) if apps_json else []
+        except:
+            apps = []
+        
+        focus_pct = int((focus or 0) * 100)
+        duration = format_time_ago(start_time)
+        
+        print(f"## Currently Active")
+        print(f"**{label}** ({ctx_type})")
+        print(f"- Started: {duration}")
+        print(f"- Focus: {focus_pct}%")
+        print(f"- Events: {events}")
+        if apps:
+            # Extract app names from bundle IDs
+            app_names = [a.split('.')[-1] for a in apps[:5]]
+            print(f"- Apps: {', '.join(app_names)}")
+        print()
+    else:
+        print("## Currently Active")
+        print("*No active context (idle)*\n")
+    
+    # Recent clipboard
+    cursor.execute("""
+        SELECT content_preview, source_app_name, created_at
+        FROM clipboard_history
+        ORDER BY created_at DESC
+        LIMIT 3
+    """)
+    clips = cursor.fetchall()
+    
+    if clips:
+        print("## Recent Clipboard")
+        for preview, app, created in clips:
+            preview = (preview or "")[:60].replace("\n", " ")
+            app = app or "unknown"
+            ago = format_time_ago(created)
+            print(f"- [{app}] {preview}... ({ago})")
+        print()
+    
+    # Activity summary
+    one_hour_ago = (datetime.now() - timedelta(hours=1)).isoformat()
+    cursor.execute("""
+        SELECT app_name, COUNT(*) as cnt
+        FROM activity_log
+        WHERE timestamp > ? AND app_name IS NOT NULL
+        GROUP BY app_name
+        ORDER BY cnt DESC
+        LIMIT 5
+    """, (one_hour_ago,))
+    activity = cursor.fetchall()
+    
+    if activity:
+        print("## Last Hour")
+        total = sum(cnt for _, cnt in activity)
+        print(f"- Events: {total}")
+        print(f"- Top apps: {', '.join(app for app, _ in activity)}")
+    
+    conn.close()
+
+
+def cmd_full():
+    """Output full JSON context."""
+    if os.path.exists(FULL_PATH):
+        with open(FULL_PATH) as f:
+            print(f.read())
+    else:
+        # Build from database
+        conn = get_db_connection()
+        if not conn:
+            print('{"error": "Sol Unified database not found"}')
+            return
+        
+        cursor = conn.cursor()
+        
+        # Get recent contexts
+        cursor.execute("""
+            SELECT id, label, type, focus_score, apps, start_time, end_time, event_count
+            FROM context_nodes
+            ORDER BY start_time DESC
+            LIMIT 20
+        """)
+        contexts = []
+        for row in cursor.fetchall():
+            contexts.append({
+                "id": row[0],
+                "label": row[1],
+                "type": row[2],
+                "focus_score": row[3],
+                "apps": json.loads(row[4]) if row[4] else [],
+                "start_time": row[5],
+                "end_time": row[6],
+                "event_count": row[7]
+            })
+        
+        result = {
+            "generated_at": datetime.now().isoformat(),
+            "contexts": contexts
+        }
+        
+        print(json.dumps(result, indent=2))
+        conn.close()
+
+
+def cmd_clipboard(limit: int = 10, app_filter: str = None):
+    """Show recent clipboard items."""
+    conn = get_db_connection()
+    if not conn:
+        print("[]")
+        return
+    
+    cursor = conn.cursor()
+    
+    if app_filter:
+        cursor.execute("""
+            SELECT content_text, content_preview, source_app_name, source_window_title, created_at
+            FROM clipboard_history
+            WHERE source_app_name LIKE ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (f"%{app_filter}%", limit))
+    else:
+        cursor.execute("""
+            SELECT content_text, content_preview, source_app_name, source_window_title, created_at
+            FROM clipboard_history
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (limit,))
+    
+    items = []
+    for text, preview, app, window, created in cursor.fetchall():
+        items.append({
+            "content": text[:500] if text else preview[:500] if preview else None,
+            "source_app": app,
+            "source_window": window,
+            "created_at": created,
+            "age": format_time_ago(created)
+        })
+    
+    print(json.dumps(items, indent=2))
+    conn.close()
+
+
+def cmd_activity(hours: int = 4, limit: int = 50):
+    """Show recent activity."""
+    conn = get_db_connection()
+    if not conn:
+        print("[]")
+        return
+    
+    cursor = conn.cursor()
+    cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
+    
+    cursor.execute("""
+        SELECT app_name, window_title, event_type, timestamp
+        FROM activity_log
+        WHERE timestamp > ? AND app_name IS NOT NULL
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """, (cutoff, limit))
+    
+    events = []
+    for app, window, event_type, ts in cursor.fetchall():
+        events.append({
+            "app": app,
+            "window": window[:100] if window else None,
+            "event": event_type,
+            "time": ts,
+            "ago": format_time_ago(ts)
+        })
+    
+    print(json.dumps(events, indent=2))
+    conn.close()
+
+
+def cmd_search(query: str):
+    """Search across clipboard, activity, and contexts."""
+    conn = get_db_connection()
+    if not conn:
+        print('{"results": []}')
+        return
+    
+    cursor = conn.cursor()
+    results = []
+    query_pattern = f"%{query}%"
+    
+    # Search clipboard
+    cursor.execute("""
+        SELECT 'clipboard' as type, content_preview as content, source_app_name as source, created_at
+        FROM clipboard_history
+        WHERE content_text LIKE ? OR content_preview LIKE ?
+        ORDER BY created_at DESC
+        LIMIT 10
+    """, (query_pattern, query_pattern))
+    
+    for row in cursor.fetchall():
+        results.append({
+            "type": row[0],
+            "content": row[1][:200] if row[1] else None,
+            "source": row[2],
+            "time": row[3],
+            "ago": format_time_ago(row[3])
+        })
+    
+    # Search activity (window titles)
+    cursor.execute("""
+        SELECT 'activity' as type, window_title as content, app_name as source, timestamp
+        FROM activity_log
+        WHERE window_title LIKE ?
+        ORDER BY timestamp DESC
+        LIMIT 10
+    """, (query_pattern,))
+    
+    for row in cursor.fetchall():
+        results.append({
+            "type": row[0],
+            "content": row[1][:200] if row[1] else None,
+            "source": row[2],
+            "time": row[3],
+            "ago": format_time_ago(row[3])
+        })
+    
+    # Search context labels
+    cursor.execute("""
+        SELECT 'context' as type, label as content, type as source, start_time
+        FROM context_nodes
+        WHERE label LIKE ?
+        ORDER BY start_time DESC
+        LIMIT 10
+    """, (query_pattern,))
+    
+    for row in cursor.fetchall():
+        results.append({
+            "type": row[0],
+            "content": row[1],
+            "source": row[2],
+            "time": row[3],
+            "ago": format_time_ago(row[3])
+        })
+    
+    # Sort all results by time
+    results.sort(key=lambda x: x.get("time", ""), reverse=True)
+    
+    print(json.dumps({"query": query, "results": results[:20]}, indent=2))
+    conn.close()
+
+
+def cmd_contexts(hours: int = 24):
+    """Show recent work contexts/sessions."""
+    conn = get_db_connection()
+    if not conn:
+        print("[]")
+        return
+    
+    cursor = conn.cursor()
+    cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
+    
+    cursor.execute("""
+        SELECT id, label, type, focus_score, apps, start_time, end_time, event_count, is_active
+        FROM context_nodes
+        WHERE start_time > ?
+        ORDER BY start_time DESC
+    """, (cutoff,))
+    
+    contexts = []
+    for row in cursor.fetchall():
+        try:
+            apps = json.loads(row[4]) if row[4] else []
+        except:
+            apps = []
+        
+        contexts.append({
+            "id": row[0],
+            "label": row[1],
+            "type": row[2],
+            "focus_score": row[3],
+            "apps": apps,
+            "start_time": row[5],
+            "end_time": row[6],
+            "event_count": row[7],
+            "is_active": bool(row[8])
+        })
+    
+    print(json.dumps(contexts, indent=2))
+    conn.close()
+
+
+def cmd_stats():
+    """Show today's stats."""
+    conn = get_db_connection()
+    if not conn:
+        print('{"error": "database not found"}')
+        return
+    
+    cursor = conn.cursor()
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    # Clipboard count
+    cursor.execute("SELECT COUNT(*) FROM clipboard_history WHERE created_at > ?", (today,))
+    clipboard_count = cursor.fetchone()[0]
+    
+    # Activity count
+    cursor.execute("SELECT COUNT(*) FROM activity_log WHERE timestamp > ?", (today,))
+    activity_count = cursor.fetchone()[0]
+    
+    # Context count
+    cursor.execute("SELECT COUNT(*) FROM context_nodes WHERE start_time > ?", (today,))
+    context_count = cursor.fetchone()[0]
+    
+    # Average focus
+    cursor.execute("SELECT AVG(focus_score) FROM context_nodes WHERE start_time > ?", (today,))
+    avg_focus = cursor.fetchone()[0] or 0
+    
+    # Most used app
+    cursor.execute("""
+        SELECT app_name, COUNT(*) as cnt
+        FROM activity_log
+        WHERE timestamp > ? AND app_name IS NOT NULL
+        GROUP BY app_name
+        ORDER BY cnt DESC
+        LIMIT 1
+    """, (today,))
+    top_app_row = cursor.fetchone()
+    top_app = top_app_row[0] if top_app_row else None
+    
+    stats = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "clipboard_items": clipboard_count,
+        "activity_events": activity_count,
+        "context_sessions": context_count,
+        "average_focus": round(avg_focus * 100),
+        "most_used_app": top_app
+    }
+    
+    print(json.dumps(stats, indent=2))
+    conn.close()
+
+
+def show_help():
+    """Show usage help."""
+    help_text = """
+sol-context - Query Sol Unified context from any terminal
+
+USAGE:
+    sol-context                     Quick summary of current work context
+    sol-context full                Full JSON context (all data)
+    sol-context clipboard [N]       Last N clipboard items (default: 10)
+    sol-context clipboard N APP     Last N items from APP
+    sol-context activity [H]        Activity from last H hours (default: 4)
+    sol-context contexts [H]        Work contexts from last H hours (default: 24)
+    sol-context search TERM         Search across all context
+    sol-context stats               Today's stats
+    sol-context --help              Show this help
+
+EXAMPLES:
+    sol-context                     # What am I currently working on?
+    sol-context clipboard 5 Cursor  # Last 5 copies from Cursor
+    sol-context search "README"     # Find when I was working on READMEs
+    sol-context activity 1          # What did I do in the last hour?
+
+FOR AI AGENTS:
+    Add to your CLAUDE.md:
+    
+    To understand my current work context, run: sol-context
+    For more detail: sol-context full
+    
+    This gives you real-time access to:
+    - Current work session (type, focus score, apps)
+    - Recent clipboard (with source apps/windows)
+    - Activity timeline
+    - Context transitions
+"""
+    print(help_text)
+
+
+def main():
+    if len(sys.argv) < 2:
+        cmd_summary()
+        return
+    
+    cmd = sys.argv[1].lower()
+    
+    if cmd in ["-h", "--help", "help"]:
+        show_help()
+    elif cmd == "full":
+        cmd_full()
+    elif cmd == "clipboard":
+        limit = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+        app_filter = sys.argv[3] if len(sys.argv) > 3 else None
+        cmd_clipboard(limit, app_filter)
+    elif cmd == "activity":
+        hours = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+        cmd_activity(hours)
+    elif cmd == "contexts":
+        hours = int(sys.argv[2]) if len(sys.argv) > 2 else 24
+        cmd_contexts(hours)
+    elif cmd == "search":
+        if len(sys.argv) < 3:
+            print('{"error": "search requires a query term"}')
+            return
+        cmd_search(sys.argv[2])
+    elif cmd == "stats":
+        cmd_stats()
+    else:
+        print(f'Unknown command: {cmd}')
+        print('Run "sol-context --help" for usage')
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+

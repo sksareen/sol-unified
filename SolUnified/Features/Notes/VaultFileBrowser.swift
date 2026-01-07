@@ -22,8 +22,12 @@ struct VaultFileBrowser: View {
     let vaultPath: String
     @Binding var selectedFile: URL?
     @StateObject private var filesStore = VaultFilesStore.shared
+    @ObservedObject private var settings = AppSettings.shared
     @State private var searchQuery: String = ""
+    @State private var showNewFilePopover: Bool = false
+    @State private var newFileName: String = ""
     @FocusState private var isSearchFocused: Bool
+    @FocusState private var isNewFileFocused: Bool
     
     var filteredFiles: [MarkdownFile] {
         if searchQuery.isEmpty {
@@ -38,15 +42,99 @@ struct VaultFileBrowser: View {
         HStack(spacing: 0) {
             if !filesStore.isCollapsed {
                 VStack(spacing: 0) {
+                    // Action bar - Today's Note + New File
+                    HStack(spacing: 6) {
+                        // Today's Note button
+                        Button(action: {
+                            openTodaysNote()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 10))
+                                Text("Today")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.brutalistAccent.opacity(0.15))
+                            .foregroundColor(.brutalistAccent)
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Open today's note (⌘T)")
+                        
+                        Spacer()
+                        
+                        // New File button
+                        Button(action: {
+                            showNewFilePopover = true
+                            newFileName = ""
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.brutalistTextSecondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("New file")
+                        .popover(isPresented: $showNewFilePopover, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("New Note")
+                                    .font(.system(size: 11, weight: .semibold))
+                                
+                                HStack {
+                                    TextField("filename", text: $newFileName)
+                                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                                        .font(.system(size: 11))
+                                        .focused($isNewFileFocused)
+                                        .onSubmit {
+                                            createNewFile()
+                                        }
+                                    
+                                    Text(".md")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                HStack {
+                                    Spacer()
+                                    Button("Cancel") {
+                                        showNewFilePopover = false
+                                    }
+                                    .buttonStyle(BorderlessButtonStyle())
+                                    
+                                    Button("Create") {
+                                        createNewFile()
+                                    }
+                                    .buttonStyle(BorderedProminentButtonStyle())
+                                    .disabled(newFileName.trimmingCharacters(in: .whitespaces).isEmpty)
+                                }
+                            }
+                            .padding(12)
+                            .frame(width: 220)
+                            .onAppear {
+                                isNewFileFocused = true
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Color.brutalistBgSecondary)
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(Color.brutalistBorder),
+                        alignment: .bottom
+                    )
+                    
                     // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary.opacity(0.6))
-                    .font(.system(size: 11))
+                    .font(.system(size: settings.globalFontSize - 2))
                 
                 TextField("Search files...", text: $searchQuery)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 11))
+                    .font(.system(size: settings.globalFontSize - 1))
                     .focused($isSearchFocused)
                     .onChange(of: searchQuery) { newValue in
                         if !newValue.isEmpty {
@@ -59,7 +147,7 @@ struct VaultFileBrowser: View {
                     Button(action: { searchQuery = "" }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary.opacity(0.6))
-                            .font(.system(size: 11))
+                            .font(.system(size: settings.globalFontSize - 2))
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -85,18 +173,18 @@ struct VaultFileBrowser: View {
                                 }) {
                                     HStack(spacing: 4) {
                                         Image(systemName: filesStore.expandedFolders.contains(group.folder) ? "chevron.down" : "chevron.right")
-                                            .font(.system(size: 9, weight: .bold))
+                                            .font(.system(size: settings.globalFontSize - 4, weight: .bold))
                                         
                                         Image(systemName: "folder.fill")
-                                            .font(.system(size: 11))
+                                            .font(.system(size: settings.globalFontSize - 1))
                                         
                                         Text(group.folder)
-                                            .font(.system(size: 11, weight: .semibold))
+                                            .font(.system(size: settings.globalFontSize - 1, weight: .semibold))
                                         
                                         Spacer()
                                         
                                         Text("\(group.files.count)")
-                                            .font(.system(size: 9, weight: .medium))
+                                            .font(.system(size: settings.globalFontSize - 4, weight: .medium))
                                             .foregroundColor(.secondary.opacity(0.6))
                                     }
                                     .foregroundColor(.brutalistTextPrimary)
@@ -184,6 +272,43 @@ struct VaultFileBrowser: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleVaultSidebar"))) { _ in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 filesStore.isCollapsed.toggle()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshVaultFiles"))) { _ in
+            loadFiles()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenTodaysNote"))) { _ in
+            openTodaysNote()
+        }
+    }
+    
+    private func openTodaysNote() {
+        let dailyNoteURL = DailyNoteManager.shared.getOrCreateTodaysNote(
+            vaultRoot: vaultPath,
+            journalFolder: settings.dailyNoteFolder,
+            dateFormat: settings.dailyNoteDateFormat,
+            template: settings.dailyNoteTemplate
+        )
+        
+        if let url = dailyNoteURL {
+            // Refresh file list to include the new note
+            loadFiles()
+            // Select the daily note
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                selectedFile = url
+            }
+        }
+    }
+    
+    private func createNewFile() {
+        guard !newFileName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        
+        let folderURL = URL(fileURLWithPath: vaultPath)
+        if let url = DailyNoteManager.shared.createNewFile(at: folderURL, fileName: newFileName) {
+            showNewFilePopover = false
+            loadFiles()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                selectedFile = url
             }
         }
     }
@@ -289,16 +414,17 @@ struct FileRow: View {
     let file: MarkdownFile
     let isSelected: Bool
     let onTap: () -> Void
+    @ObservedObject private var settings = AppSettings.shared
     
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
                 Image(systemName: "doc.text")
-                    .font(.system(size: 10))
+                    .font(.system(size: settings.globalFontSize - 3))
                     .foregroundColor(.secondary.opacity(0.7))
                 
                 Text(file.name)
-                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: settings.globalFontSize - 1, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .brutalistTextPrimary : .brutalistTextSecondary)
                     .lineLimit(1)
                 

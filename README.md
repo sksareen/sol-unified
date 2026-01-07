@@ -162,6 +162,54 @@ Place this at `~/Documents/agent_state.json` and Sol Unified will read/write to 
 
 ---
 
+## 🤖 AI Agent Integration (NEW)
+
+Sol Unified now exposes your context to **any Claude Code instance** from **any terminal**.
+
+### CLI Tool
+
+```bash
+# Install (already done during setup)
+ln -sf /path/to/sol-unified/sol-context /usr/local/bin/sol-context
+
+# Usage
+sol-context                     # Quick summary of current context
+sol-context clipboard 10        # Last 10 clipboard items
+sol-context activity 4          # Last 4 hours of activity
+sol-context search "README"     # Search across all context
+sol-context stats               # Today's productivity stats
+```
+
+### HTTP API
+
+When Sol Unified is running, a local API server is available:
+
+```bash
+curl http://localhost:7654/context      # Current work context
+curl http://localhost:7654/clipboard    # Recent clipboard items
+curl http://localhost:7654/activity     # Recent activity
+curl http://localhost:7654/search?q=X   # Search all context
+curl http://localhost:7654/health       # Server health check
+```
+
+### For Claude Code
+
+Add this to your project's `CLAUDE.md`:
+
+```markdown
+## Context
+To understand what I'm currently working on, run: sol-context
+For detailed context: sol-context full
+```
+
+Now any Claude instance can understand:
+- What you're currently working on (app, project, focus level)
+- Recent clipboard items with source apps
+- Activity patterns and context transitions
+- Your productivity metrics
+
+---
+
 ## Roadmap
 
 ### ✅ Phase 1: Core Context (Complete)

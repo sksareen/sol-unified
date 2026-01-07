@@ -124,6 +124,27 @@ class TasksStore: ObservableObject {
         saveToFile()
     }
     
+    func archiveCompletedTasks() {
+        var hasChanges = false
+        for i in 0..<tasks.count {
+            if tasks[i].status == "completed" {
+                tasks[i].status = "archived"
+                tasks[i].updatedAt = Date()
+                hasChanges = true
+            }
+        }
+        
+        if hasChanges {
+            // Remove archived tasks from the view
+            tasks = tasks.filter { $0.status != "archived" }
+            saveToFile()
+        }
+    }
+    
+    var completedTasksCount: Int {
+        tasks.filter { $0.status == "completed" }.count
+    }
+    
     private func saveToFile() {
         isSaving = true
         

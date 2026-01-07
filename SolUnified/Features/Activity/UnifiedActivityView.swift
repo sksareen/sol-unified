@@ -2,8 +2,7 @@
 //  UnifiedActivityView.swift
 //  SolUnified
 //
-//  Combined Activity + Context Graph view
-//  Shows semantic context by default, with drill-down to raw events
+//  Activity view showing semantic context and live activity stream
 //
 
 import SwiftUI
@@ -13,15 +12,9 @@ struct UnifiedActivityView: View {
     @ObservedObject private var activityStore = ActivityStore.shared
     @ObservedObject private var settings = AppSettings.shared
     
-    @State private var viewMode: ViewMode = .context
     @State private var selectedNode: ContextNode?
     @State private var timeFilter: TimeFilter = .last4h
     @State private var showingClearConfirm = false
-    
-    enum ViewMode: String, CaseIterable {
-        case context = "CONTEXT"
-        case events = "EVENTS"
-    }
     
     enum TimeFilter: String, CaseIterable {
         case last1h = "1H"
@@ -52,16 +45,11 @@ struct UnifiedActivityView: View {
             if !settings.activityLoggingEnabled {
                 disabledView
             } else {
-                // Mode toggle + time filter
+                // Time filter bar
                 controlBar
                 
-                // Main content
-                switch viewMode {
-                case .context:
-                    contextView
-                case .events:
-                    eventsView
-                }
+                // Main context view
+                contextView
             }
         }
         .background(Color.brutalistBgPrimary)
@@ -143,68 +131,35 @@ struct UnifiedActivityView: View {
     
     private var controlBar: some View {
         HStack(spacing: 12) {
-            // View mode toggle
+            // Time filter
             HStack(spacing: 4) {
-                ForEach(ViewMode.allCases, id: \.self) { mode in
+                ForEach(TimeFilter.allCases, id: \.self) { filter in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            viewMode = mode
+                            timeFilter = filter
                         }
                     }) {
-                        Text(mode.rawValue)
-                            .font(.system(size: 10, weight: viewMode == mode ? .bold : .medium))
-                            .foregroundColor(viewMode == mode ? .brutalistTextPrimary : .brutalistTextSecondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                        Text(filter.rawValue)
+                            .font(.system(size: 10, weight: timeFilter == filter ? .bold : .medium, design: .monospaced))
+                            .foregroundColor(timeFilter == filter ? .brutalistTextPrimary : .brutalistTextMuted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
                             .background(
-                                viewMode == mode ?
-                                    RoundedRectangle(cornerRadius: 4).fill(Color.brutalistBgTertiary) :
-                                    RoundedRectangle(cornerRadius: 4).fill(Color.clear)
+                                timeFilter == filter ?
+                                    RoundedRectangle(cornerRadius: 3).fill(Color.brutalistBgTertiary) :
+                                    RoundedRectangle(cornerRadius: 3).fill(Color.clear)
                             )
                     }
                     .buttonStyle(PlainButtonStyle())
-                }
-            }
-            .padding(2)
-            .background(Color.brutalistBgSecondary)
-            .cornerRadius(6)
-            
-            Divider()
-                .frame(height: 16)
-            
-            // Time filter (only for context mode)
-            if viewMode == .context {
-                HStack(spacing: 4) {
-                    ForEach(TimeFilter.allCases, id: \.self) { filter in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                timeFilter = filter
-                            }
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 10, weight: timeFilter == filter ? .bold : .medium, design: .monospaced))
-                                .foregroundColor(timeFilter == filter ? .brutalistTextPrimary : .brutalistTextMuted)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(
-                                    timeFilter == filter ?
-                                        RoundedRectangle(cornerRadius: 3).fill(Color.brutalistBgTertiary) :
-                                        RoundedRectangle(cornerRadius: 3).fill(Color.clear)
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
                 }
             }
             
             Spacer()
             
             // Stats
-            if viewMode == .context {
-                Text("\(filteredNodes.count) contexts")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.brutalistTextMuted)
-            }
+            Text("\(filteredNodes.count) contexts")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.brutalistTextMuted)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -217,7 +172,7 @@ struct UnifiedActivityView: View {
         )
     }
     
-    // MARK: - Context View (Semantic)
+    // MARK: - Context View (Semantic + Live Activity)
     
     private var contextView: some View {
         ScrollView {
@@ -229,6 +184,9 @@ struct UnifiedActivityView: View {
                 
                 // Focus stats
                 focusStatsRow
+                
+                // Live activity section
+                liveActivitySection
                 
                 // Context timeline
                 contextTimeline
@@ -245,6 +203,163 @@ struct UnifiedActivityView: View {
                 $0.fromContextId == node.id || $0.toContextId == node.id 
             })
         }
+    }
+    
+    // MARK: - Live Activity Section
+    
+    private var liveActivitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "waveform.path.ecg")
+                    .foregroundColor(.brutalistAccent)
+                Text("LIVE ACTIVITY")
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundColor(.brutalistTextMuted)
+                
+                Spacer()
+                
+                if activityStore.currentSession != nil {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("LIVE")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.brutalistTextMuted)
+                    }
+                }
+            }
+            
+            // Brain Pulse (Real-time Neural State)
+            if let state = ValueComputer.shared.lastState {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("FOCUS")
+                            .font(.system(size: 9))
+                            .foregroundColor(.brutalistTextSecondary)
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(Color.brutalistBgTertiary)
+                                Rectangle()
+                                    .fill(Color.green)
+                                    .frame(width: g.size.width * state.focus)
+                            }
+                        }
+                        .frame(height: 4)
+                        .cornerRadius(2)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("VELOCITY")
+                            .font(.system(size: 9))
+                            .foregroundColor(.brutalistTextSecondary)
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(Color.brutalistBgTertiary)
+                                Rectangle()
+                                    .fill(Color.blue)
+                                    .frame(width: g.size.width * state.velocity)
+                            }
+                        }
+                        .frame(height: 4)
+                        .cornerRadius(2)
+                    }
+                    
+                    Text(state.context.uppercased())
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.brutalistBgTertiary)
+                        .cornerRadius(4)
+                }
+            }
+            
+            // Current Activity
+            if let current = activityStore.currentSession {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(current.appName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.brutalistTextPrimary)
+                        
+                        if let windowTitle = current.windowTitle, !windowTitle.isEmpty {
+                            Text(windowTitle)
+                                .font(.system(size: 10))
+                                .foregroundColor(.brutalistTextSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Text(formatCurrentDuration(current.duration))
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.brutalistAccent)
+                }
+                .padding(10)
+                .background(Color.brutalistBgTertiary)
+                .cornerRadius(6)
+            }
+            
+            // Recent meaningful sessions
+            if !activityStore.meaningfulSessions.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("RECENT")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.brutalistTextMuted)
+                    
+                    ForEach(activityStore.meaningfulSessions.prefix(5)) { session in
+                        HStack(spacing: 8) {
+                            Text(formatDuration(session.duration))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(.brutalistTextPrimary)
+                                .frame(width: 40, alignment: .leading)
+                            
+                            Text(session.appName)
+                                .font(.system(size: 11))
+                                .foregroundColor(.brutalistTextPrimary)
+                                .lineLimit(1)
+                            
+                            if let windowTitle = session.windowTitle, !windowTitle.isEmpty {
+                                Text(windowTitle)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.brutalistTextMuted)
+                                    .lineLimit(1)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(formatTime(session.startTime))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(.brutalistTextMuted)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color.brutalistBgSecondary)
+        .cornerRadius(8)
+    }
+    
+    private func formatCurrentDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        
+        if minutes > 0 {
+            return String(format: "%dm %ds", minutes, seconds)
+        } else {
+            return String(format: "%ds", seconds)
+        }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
     
     private func activeContextCard(_ active: ContextNode) -> some View {
@@ -444,40 +559,6 @@ struct UnifiedActivityView: View {
         .cornerRadius(8)
     }
     
-    // MARK: - Events View (Raw)
-    
-    private var eventsView: some View {
-        VStack(spacing: 0) {
-            // App Usage Chart (compact)
-            if let stats = activityStore.stats, !stats.topApps.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("APP USAGE")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(0.5)
-                        .foregroundColor(.brutalistTextMuted)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                    
-                    CompactAppUsageChart(apps: Array(stats.topApps.prefix(5)))
-                        .frame(height: 100)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
-                }
-                .background(Color.brutalistBgSecondary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(Color.brutalistBorder),
-                    alignment: .bottom
-                )
-            }
-            
-            // Live event stream
-            LiveActivityStreamView()
-                .frame(maxHeight: .infinity)
-        }
-    }
-    
     // MARK: - Disabled View
     
     private var disabledView: some View {
@@ -587,62 +668,4 @@ struct CompactContextRow: View {
     }
 }
 
-// MARK: - Compact App Usage Chart
-
-struct CompactAppUsageChart: View {
-    let apps: [ActivityStats.AppTime]
-    
-    private var maxTime: TimeInterval {
-        apps.map { $0.totalTime }.max() ?? 1
-    }
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(apps, id: \.appBundleId) { app in
-                VStack(spacing: 4) {
-                    // Bar
-                    ZStack(alignment: .bottom) {
-                        Rectangle()
-                            .fill(Color.brutalistBgTertiary)
-                            .frame(width: 24)
-                        
-                        Rectangle()
-                            .fill(appColor(app.appName))
-                            .frame(width: 24, height: CGFloat(app.totalTime / maxTime) * 70)
-                    }
-                    .frame(height: 70)
-                    .cornerRadius(4)
-                    
-                    // Label
-                    Text(shortName(app.appName))
-                        .font(.system(size: 8))
-                        .foregroundColor(.brutalistTextMuted)
-                        .lineLimit(1)
-                        .frame(width: 40)
-                }
-            }
-            Spacer()
-        }
-    }
-    
-    private func shortName(_ name: String) -> String {
-        let words = name.components(separatedBy: " ")
-        if words.count > 1 {
-            return words.map { String($0.prefix(1)) }.joined()
-        }
-        return String(name.prefix(5))
-    }
-    
-    private func appColor(_ appName: String) -> Color {
-        let colors: [Color] = [
-            Color(hex: "3B82F6"),
-            Color(hex: "10B981"),
-            Color(hex: "F59E0B"),
-            Color(hex: "8B5CF6"),
-            Color(hex: "EF4444")
-        ]
-        let hash = abs(appName.hashValue)
-        return colors[hash % colors.count]
-    }
-}
 

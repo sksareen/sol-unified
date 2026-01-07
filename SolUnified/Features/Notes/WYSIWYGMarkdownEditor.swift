@@ -10,6 +10,7 @@ import AppKit
 
 struct WYSIWYGMarkdownEditor: View {
     @Binding var fileURL: URL?
+    @ObservedObject private var settings = AppSettings.shared
     @State private var content: String = ""
     @State private var saveTimer: Timer?
     @State private var lastSaved: Date?
@@ -21,16 +22,16 @@ struct WYSIWYGMarkdownEditor: View {
                 if let url = fileURL {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.text.fill")
-                            .font(.system(size: 11))
+                            .font(.system(size: settings.globalFontSize - 2))
                             .foregroundColor(.brutalistAccent)
                         
                         Text(url.lastPathComponent)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: settings.globalFontSize - 2, weight: .semibold))
                             .foregroundColor(.brutalistTextPrimary)
                     }
                 } else {
                     Text("SELECT A FILE")
-                        .font(.system(size: 11, weight: .black))
+                        .font(.system(size: settings.globalFontSize - 2, weight: .black))
                         .tracking(1)
                         .foregroundColor(.secondary)
                 }
@@ -43,7 +44,7 @@ struct WYSIWYGMarkdownEditor: View {
                             .fill(Color.green.opacity(0.8))
                             .frame(width: 4, height: 4)
                         Text("SAVED \(timeAgo(lastSaved).uppercased())")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: settings.globalFontSize - 4, weight: .bold))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
                 }
@@ -60,9 +61,10 @@ struct WYSIWYGMarkdownEditor: View {
                 alignment: .bottom
             )
             
-            // Editor
+            // Editor - use .id() to force recreation when font size changes
             if fileURL != nil {
-                MarkdownTextEditor(text: $content)
+                MarkdownTextEditor(text: $content, fontSize: settings.globalFontSize)
+                    .id("editor-\(settings.globalFontSize)")
                     .onChange(of: content) { _ in
                         scheduleAutoSave()
                     }
@@ -141,6 +143,7 @@ struct WYSIWYGMarkdownEditor: View {
 
 struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
+    let fontSize: CGFloat
     
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -162,12 +165,18 @@ struct MarkdownTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.isRichText = true
         textView.allowsUndo = true
-        textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.font = NSFont.systemFont(ofSize: fontSize, weight: .regular)
         textView.textColor = NSColor.labelColor
         textView.backgroundColor = NSColor.controlBackgroundColor
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
+        
+        // Set default paragraph style with line height
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = fontSize * 0.5  // 50% of font size as line spacing
+        paragraphStyle.paragraphSpacing = fontSize * 0.3
+        textView.defaultParagraphStyle = paragraphStyle
         
         // Add top and bottom padding - 800px at bottom so text isn't stuck at screen bottom
         textView.textContainerInset = NSSize(width: 20, height: 20)
@@ -179,7 +188,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         
         // Set initial text
         textView.string = text
-        applyMarkdownFormatting(to: textView)
+        applyMarkdownFormatting(to: textView, fontSize: fontSize)
         
         return scrollView
     }
@@ -190,7 +199,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         if textView.string != text {
             let selectedRange = textView.selectedRange()
             textView.string = text
-            applyMarkdownFormatting(to: textView)
+            applyMarkdownFormatting(to: textView, fontSize: fontSize)
             
             // Restore cursor position
             if selectedRange.location <= textView.string.count {
@@ -203,31 +212,41 @@ struct MarkdownTextEditor: NSViewRepresentable {
         Coordinator(self)
     }
     
-    private func applyMarkdownFormatting(to textView: NSTextView) {
+    private func applyMarkdownFormatting(to textView: NSTextView, fontSize: CGFloat) {
         guard let textStorage = textView.textStorage else { return }
         
         let fullRange = NSRange(location: 0, length: textStorage.length)
         let selectedRange = textView.selectedRange()
         
+        // Use the passed font size
+        let baseFontSize = fontSize
+        
+        // Create paragraph style with line height
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = baseFontSize * 0.5  // 50% of font size as line spacing
+        paragraphStyle.paragraphSpacing = baseFontSize * 0.3
+        
         // Begin editing to batch changes and prevent flicker
         textStorage.beginEditing()
         
         // Reset to base attributes first
-        let baseFont = NSFont.systemFont(ofSize: 15, weight: .regular)
+        let baseFont = NSFont.systemFont(ofSize: baseFontSize, weight: .regular)
         textStorage.addAttribute(.font, value: baseFont, range: fullRange)
         textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
+        textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
         
         // Remove any existing background colors
         textStorage.removeAttribute(.backgroundColor, range: fullRange)
         
         // Headers - make # symbols grey and de-emphasized
+        // Sizes are relative to base font size
         let headerPatterns: [(String, CGFloat, CGFloat)] = [
-            ("^(#{1}) (.+)$", 28, 700),  // H1
-            ("^(#{2}) (.+)$", 24, 700),  // H2
-            ("^(#{3}) (.+)$", 20, 600),  // H3
-            ("^(#{4}) (.+)$", 17, 600),  // H4
-            ("^(#{5}) (.+)$", 15, 600),  // H5
-            ("^(#{6}) (.+)$", 15, 500)   // H6
+            ("^(#{1}) (.+)$", baseFontSize + 13, 700),  // H1
+            ("^(#{2}) (.+)$", baseFontSize + 9, 700),   // H2
+            ("^(#{3}) (.+)$", baseFontSize + 5, 600),   // H3
+            ("^(#{4}) (.+)$", baseFontSize + 2, 600),   // H4
+            ("^(#{5}) (.+)$", baseFontSize, 600),       // H5
+            ("^(#{6}) (.+)$", baseFontSize, 500)        // H6
         ]
         
         for (pattern, fontSize, weight) in headerPatterns {
@@ -277,7 +296,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 // Make the content bold
                 if match.numberOfRanges > 1 {
                     let contentRange = match.range(at: 1)
-                    textStorage.addAttribute(.font, value: NSFont.systemFont(ofSize: 15, weight: .semibold), range: contentRange)
+                    textStorage.addAttribute(.font, value: NSFont.systemFont(ofSize: baseFontSize, weight: .semibold), range: contentRange)
                 }
             }
         }
@@ -296,7 +315,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 // Make the content italic
                 if match.numberOfRanges > 1 {
                     let contentRange = match.range(at: 1)
-                    let italicFont = NSFont.systemFont(ofSize: 15, weight: .regular).italic()
+                    let italicFont = NSFont.systemFont(ofSize: baseFontSize, weight: .regular).italic()
                     textStorage.addAttributes([
                         .font: italicFont,
                         .obliqueness: 0.15 as NSNumber
@@ -320,7 +339,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 if match.numberOfRanges > 1 {
                     let contentRange = match.range(at: 1)
                     textStorage.addAttributes([
-                        .font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+                        .font: NSFont.monospacedSystemFont(ofSize: baseFontSize - 1, weight: .regular),
                         .backgroundColor: NSColor.quaternaryLabelColor,
                         .foregroundColor: NSColor.systemRed
                     ], range: contentRange)
@@ -398,7 +417,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
             
             // Apply formatting instantly without debouncing
             isApplyingFormatting = true
-            parent.applyMarkdownFormatting(to: textView)
+            parent.applyMarkdownFormatting(to: textView, fontSize: parent.fontSize)
             isApplyingFormatting = false
         }
         
@@ -408,7 +427,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
             // Re-apply formatting to update hidden headings
             if !isApplyingFormatting {
                 isApplyingFormatting = true
-                parent.applyMarkdownFormatting(to: textView)
+                parent.applyMarkdownFormatting(to: textView, fontSize: parent.fontSize)
                 isApplyingFormatting = false
             }
         }
@@ -417,6 +436,21 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
 // MARK: - EditorTextView Subclass for Keyboard Shortcuts
 class EditorTextView: NSTextView {
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        // Ensure we're editable when becoming first responder
+        self.isEditable = true
+        return result
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Always become first responder on click
+        window?.makeFirstResponder(self)
+        super.mouseDown(with: event)
+    }
+    
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         // Command + Key shortcuts
         if event.modifierFlags.contains(.command) {

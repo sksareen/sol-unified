@@ -20,7 +20,7 @@ class BorderlessWindow: NSWindow {
         self.level = .floating
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.isMovableByWindowBackground = false // Disable dragging from anywhere - we'll handle it in SwiftUI
-        self.hasShadow = true
+        self.hasShadow = false  // No shadow for cleaner look
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
     }

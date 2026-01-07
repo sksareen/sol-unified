@@ -16,12 +16,13 @@ class VaultViewState: ObservableObject {
 
 struct VaultView: View {
     @StateObject private var state = VaultViewState.shared
+    @ObservedObject private var settings = AppSettings.shared
     @FocusState private var isViewFocused: Bool
     
     var body: some View {
         HStack(spacing: 0) {
             VaultFileBrowser(
-                vaultPath: AppSettings.shared.vaultRootDirectory,
+                vaultPath: settings.vaultRootDirectory,
                 selectedFile: $state.selectedFile
             )
             
@@ -42,5 +43,32 @@ struct VaultView: View {
             .opacity(0)
             .allowsHitTesting(false)
         )
+        // Hidden button for opening today's note (Cmd+T)
+        .overlay(
+            Button(action: {
+                openTodaysNote()
+            }) {
+                EmptyView()
+            }
+            .keyboardShortcut("t", modifiers: [.command])
+            .opacity(0)
+            .allowsHitTesting(false)
+        )
+    }
+    
+    private func openTodaysNote() {
+        let dailyNoteURL = DailyNoteManager.shared.getOrCreateTodaysNote(
+            vaultRoot: settings.vaultRootDirectory,
+            journalFolder: settings.dailyNoteFolder,
+            dateFormat: settings.dailyNoteDateFormat,
+            template: settings.dailyNoteTemplate
+        )
+        
+        if let url = dailyNoteURL {
+            // Trigger file list refresh
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshVaultFiles"), object: nil)
+            // Select the daily note
+            state.selectedFile = url
+        }
     }
 }

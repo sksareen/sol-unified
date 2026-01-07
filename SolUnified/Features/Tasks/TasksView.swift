@@ -39,6 +39,29 @@ struct TasksView: View {
                         .frame(width: 12, height: 12)
                 }
                 
+                // Archive completed tasks button
+                if store.completedTasksCount > 0 {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            store.archiveCompletedTasks()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "archivebox")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Archive \(store.completedTasksCount)")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(Color.brutalistTextSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.brutalistBgTertiary)
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Archive all completed tasks")
+                }
+                
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         isAddingTask = true
