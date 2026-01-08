@@ -212,8 +212,7 @@ struct ChatView: View {
                 .disabled(inputText.isEmpty && !agent.isProcessing)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 50)
+            .padding(.vertical, 16)
         }
     }
 

@@ -504,4 +504,22 @@ class TerminalStore: ObservableObject {
     func clearCurrentTerminal() {
         currentTab?.terminal.send(txt: "clear\n")
     }
+    
+    func cycleToNextTab() {
+        guard tabs.count > 1,
+              let currentIndex = tabs.firstIndex(where: { $0.id == selectedTabId }) else {
+            return
+        }
+        let nextIndex = (currentIndex + 1) % tabs.count
+        selectedTabId = tabs[nextIndex].id
+    }
+    
+    func cycleToPreviousTab() {
+        guard tabs.count > 1,
+              let currentIndex = tabs.firstIndex(where: { $0.id == selectedTabId }) else {
+            return
+        }
+        let prevIndex = (currentIndex - 1 + tabs.count) % tabs.count
+        selectedTabId = tabs[prevIndex].id
+    }
 }

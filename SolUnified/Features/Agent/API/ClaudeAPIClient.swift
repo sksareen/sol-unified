@@ -104,7 +104,7 @@ class ClaudeAPIClient: ObservableObject {
 
     private func messageToDict(_ message: ChatMessage) -> [String: Any] {
         var dict: [String: Any] = [:]
-        
+
         // Handle tool results (these become user messages)
         if message.role == .tool, let toolResults = message.toolResults {
             dict["role"] = "user"

@@ -276,7 +276,7 @@ struct SettingsView: View {
                 
                 Spacer()
             }
-            .frame(width: 160)
+            .frame(width: 180)
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()

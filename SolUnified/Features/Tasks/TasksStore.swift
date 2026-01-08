@@ -79,12 +79,12 @@ class TasksStore: ObservableObject {
         }
     }
     
-    func addTask(title: String, description: String = "", priority: String = "medium", project: String = "general") {
+    func addTask(title: String, description: String = "", priority: String = "medium", project: String = "general", assignedTo: String = "me") {
         let newTask = AgentTask(
             id: UUID().uuidString,
             title: title,
             description: description,
-            assignedTo: "mable",
+            assignedTo: assignedTo,
             status: "pending",
             priority: priority,
             createdAt: Date(),
@@ -143,6 +143,11 @@ class TasksStore: ObservableObject {
     
     var completedTasksCount: Int {
         tasks.filter { $0.status == "completed" }.count
+    }
+    
+    func reorderTasks(_ newOrder: [AgentTask]) {
+        tasks = newOrder
+        saveToFile()
     }
     
     private func saveToFile() {

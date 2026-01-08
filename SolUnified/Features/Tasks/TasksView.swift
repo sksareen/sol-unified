@@ -1,10 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TasksView: View {
     @StateObject private var store = TasksStore()
     @State private var selectedTask: AgentTask?
     @State private var newTaskTitle = ""
     @State private var isAddingTask = false
+    @State private var draggedTaskId: String?
     
     var sortedTasks: [AgentTask] {
         store.tasks.sorted { task1, task2 in
@@ -140,6 +142,16 @@ struct TasksView: View {
                                         selectedTask = selectedTask?.id == task.id ? nil : task
                                     }
                                 }
+                                .onDrag {
+                                    draggedTaskId = task.id
+                                    return NSItemProvider(object: task.id as NSString)
+                                }
+                                .onDrop(of: [.text], delegate: TaskDropDelegate(
+                                    task: task,
+                                    tasks: $store.tasks,
+                                    store: store,
+                                    draggedTaskId: $draggedTaskId
+                                ))
                         }
                     }
                     .padding(.vertical, 8)
@@ -155,6 +167,7 @@ struct TaskRow: View {
     @ObservedObject var store: TasksStore
     let isSelected: Bool
     @State private var isHovered = false
+    @State private var isDragHovered = false
     
     var statusColor: Color {
         switch task.status {
@@ -179,7 +192,21 @@ struct TaskRow: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                // Drag handle
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(isHovered ? Color.brutalistTextSecondary : Color.brutalistTextMuted.opacity(0.4))
+                    .frame(width: 16)
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.openHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+                
                 Button(action: {
                     let newStatus = task.status == "completed" ? "pending" : "completed"
                     store.updateTask(taskId: task.id, status: newStatus)
@@ -249,6 +276,15 @@ struct TaskRow: View {
                 Spacer()
                 
                 HStack(spacing: 8) {
+                    // Assignee picker (Me vs Agent)
+                    AssigneePicker(
+                        selectedAssignee: task.assignedTo,
+                        onChange: { newAssignee in
+                            store.updateTask(taskId: task.id, assignedTo: newAssignee)
+                        }
+                    )
+                    .frame(width: 70)
+                    
                     StatusPicker(
                         selectedStatus: task.status,
                         availableStatuses: store.availableStatuses,
@@ -271,8 +307,9 @@ struct TaskRow: View {
             
             Divider()
                 .background(Color.brutalistBorder)
-                .padding(.leading, 52)
+                .padding(.leading, 68)
         }
+        .background(isDragHovered ? Color.brutalistAccent.opacity(0.1) : Color.clear)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -375,5 +412,97 @@ struct StatusPicker: View {
             )
         }
         .menuStyle(BorderlessButtonMenuStyle())
+    }
+}
+
+// MARK: - Assignee Picker (Me vs Agent)
+struct AssigneePicker: View {
+    let selectedAssignee: String
+    let onChange: (String) -> Void
+    
+    var isMe: Bool {
+        selectedAssignee == "me" || selectedAssignee == "self"
+    }
+    
+    var displayName: String {
+        isMe ? "Me" : "Agent"
+    }
+    
+    var icon: String {
+        isMe ? "person.fill" : "cpu"
+    }
+    
+    var color: Color {
+        isMe ? Color.brutalistAccent : Color(hex: "#AF52DE")
+    }
+    
+    var body: some View {
+        Menu {
+            Button {
+                onChange("me")
+            } label: {
+                Label("Me", systemImage: "person.fill")
+            }
+            Button {
+                onChange("agent")
+            } label: {
+                Label("Agent", systemImage: "cpu")
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .medium))
+                Text(displayName)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.1))
+            .cornerRadius(6)
+        }
+        .menuStyle(BorderlessButtonMenuStyle())
+    }
+}
+
+// MARK: - Task Drag and Drop
+struct TaskDropDelegate: DropDelegate {
+    let task: AgentTask
+    @Binding var tasks: [AgentTask]
+    let store: TasksStore
+    @Binding var draggedTaskId: String?
+    
+    func performDrop(info: DropInfo) -> Bool {
+        // Save the reordered tasks
+        store.reorderTasks(tasks)
+        draggedTaskId = nil
+        return true
+    }
+    
+    func dropEntered(info: DropInfo) {
+        guard let draggedId = draggedTaskId,
+              let fromIndex = tasks.firstIndex(where: { $0.id == draggedId }),
+              let toIndex = tasks.firstIndex(where: { $0.id == task.id }),
+              fromIndex != toIndex else {
+            return
+        }
+        
+        withAnimation(.easeInOut(duration: 0.2)) {
+            let movedTask = tasks.remove(at: fromIndex)
+            tasks.insert(movedTask, at: toIndex)
+        }
+    }
+    
+    func dropExited(info: DropInfo) {
+        // No-op
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        return DropProposal(operation: .move)
+    }
+    
+    func validateDrop(info: DropInfo) -> Bool {
+        return draggedTaskId != nil
     }
 }

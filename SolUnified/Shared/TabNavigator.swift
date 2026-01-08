@@ -75,6 +75,45 @@ struct TabNavigator: View {
                 .keyboardShortcut("-", modifiers: .command)
                 .hidden()
                 
+                // Terminal shortcuts (⌘T = new tab, ⌘W = close tab, ⌘\ = split)
+                Button(action: {
+                    terminalPanelState.show()
+                    TerminalStore.shared.addTab()
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("t", modifiers: .command)
+                .hidden()
+                
+                Button(action: {
+                    if terminalPanelState.isVisible {
+                        if TerminalStore.shared.tabs.count > 1 {
+                            if let currentId = TerminalStore.shared.selectedTabId {
+                                TerminalStore.shared.closeTab(currentId)
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                terminalPanelState.isVisible = false
+                            }
+                        }
+                    }
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("w", modifiers: .command)
+                .hidden()
+                
+                // Ctrl+Tab to cycle terminal tabs
+                Button(action: {
+                    if terminalPanelState.isVisible {
+                        TerminalStore.shared.cycleToNextTab()
+                    }
+                }) {
+                    EmptyView()
+                }
+                .keyboardShortcut(KeyEquivalent.tab, modifiers: .control)
+                .hidden()
+                
                 Spacer()
                 
                 // Terminal toggle button
@@ -138,15 +177,19 @@ struct TabNavigator: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // Shrink content when terminal is visible
-                .padding(.bottom, terminalPanelState.isVisible ? terminalPanelState.panelHeight : 0)
+                // Shrink content when terminal is visible (account for status bar)
+                .padding(.bottom, terminalPanelState.isVisible ? terminalPanelState.panelHeight + 24 : 24)
                 
-                // Terminal slide-out panel
+                // Terminal slide-out panel (above status bar)
                 if terminalPanelState.isVisible {
                     TerminalPanel()
                         .frame(height: terminalPanelState.panelHeight)
+                        .padding(.bottom, 24) // Leave room for status bar
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                
+                // Global Status Bar
+                GlobalStatusBar()
             }
         }
         .background(Color.brutalistBgPrimary)
@@ -188,6 +231,12 @@ class TerminalPanelState: ObservableObject {
     func toggle() {
         isVisible.toggle()
     }
+    
+    func show() {
+        if !isVisible {
+            isVisible = true
+        }
+    }
 }
 
 // MARK: - Terminal Panel View
@@ -214,9 +263,9 @@ struct TerminalPanel: View {
                     .onChanged { value in
                         isDragging = true
                         let newHeight = panelState.panelHeight - value.translation.height
-                        // Allow terminal to expand to nearly full height (leaving room for tab bar)
+                        // Allow terminal to expand to nearly full height (leaving just tab bar + status bar)
                         let maxHeight = NSScreen.main?.visibleFrame.height ?? 800
-                        panelState.panelHeight = max(100, min(maxHeight - 60, newHeight))
+                        panelState.panelHeight = max(100, min(maxHeight - 70, newHeight))
                     }
                     .onEnded { _ in
                         isDragging = false
@@ -296,11 +345,6 @@ struct TerminalPanel: View {
                     .background(Color.black)
                     .id(currentTab.id)
             }
-            
-            // Bottom padding spacer
-            Spacer()
-                .frame(height: 50)
-                .background(Color.black)
         }
         .background(Color.black)
         .overlay(
@@ -346,6 +390,59 @@ struct PanelTerminalTabButton: View {
         .onTapGesture {
             onSelect()
         }
+    }
+}
+
+// MARK: - Global Status Bar
+struct GlobalStatusBar: View {
+    @StateObject private var terminalStore = TerminalStore.shared
+    @StateObject private var terminalPanelState = TerminalPanelState.shared
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Terminal indicator
+            if terminalPanelState.isVisible {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    Text("Terminal")
+                        .font(.system(size: 10, weight: .medium))
+                    if terminalStore.tabs.count > 1 {
+                        Text("(\(terminalStore.tabs.count) tabs)")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.brutalistTextMuted)
+                    }
+                }
+                .foregroundColor(Color.brutalistTextSecondary)
+            }
+            
+            Spacer()
+            
+            // Keyboard hints
+            Text("⌘J Terminal")
+                .font(.system(size: 9))
+                .foregroundColor(Color.brutalistTextMuted)
+            
+            if terminalPanelState.isVisible {
+                Text("⌘T New")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color.brutalistTextMuted)
+                Text("⌘W Close")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color.brutalistTextMuted)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 24)
+        .frame(maxWidth: .infinity)
+        .background(Color.brutalistBgSecondary)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.brutalistBorder),
+            alignment: .top
+        )
     }
 }
 
