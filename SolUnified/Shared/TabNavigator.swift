@@ -214,7 +214,9 @@ struct TerminalPanel: View {
                     .onChanged { value in
                         isDragging = true
                         let newHeight = panelState.panelHeight - value.translation.height
-                        panelState.panelHeight = max(150, min(600, newHeight))
+                        // Allow terminal to expand to nearly full height (leaving room for tab bar)
+                        let maxHeight = NSScreen.main?.visibleFrame.height ?? 800
+                        panelState.panelHeight = max(100, min(maxHeight - 60, newHeight))
                     }
                     .onEnded { _ in
                         isDragging = false
@@ -294,6 +296,11 @@ struct TerminalPanel: View {
                     .background(Color.black)
                     .id(currentTab.id)
             }
+            
+            // Bottom padding spacer
+            Spacer()
+                .frame(height: 50)
+                .background(Color.black)
         }
         .background(Color.black)
         .overlay(

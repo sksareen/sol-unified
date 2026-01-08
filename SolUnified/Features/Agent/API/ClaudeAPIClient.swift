@@ -103,12 +103,9 @@ class ClaudeAPIClient: ObservableObject {
     }
 
     private func messageToDict(_ message: ChatMessage) -> [String: Any] {
-        var dict: [String: Any] = [
-            "role": message.role == .assistant ? "assistant" : "user",
-            "content": message.content
-        ]
-
-        // Handle tool results
+        var dict: [String: Any] = [:]
+        
+        // Handle tool results (these become user messages)
         if message.role == .tool, let toolResults = message.toolResults {
             dict["role"] = "user"
             dict["content"] = toolResults.map { result -> [String: Any] in
@@ -118,7 +115,49 @@ class ClaudeAPIClient: ObservableObject {
                     "content": result.result
                 ]
             }
+            return dict
         }
+        
+        // Handle assistant messages with tool calls
+        if message.role == .assistant, let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+            dict["role"] = "assistant"
+            var contentArray: [[String: Any]] = []
+            
+            // Add text content if present
+            if !message.content.isEmpty {
+                contentArray.append([
+                    "type": "text",
+                    "text": message.content
+                ])
+            }
+            
+            // Add tool_use blocks
+            for call in toolCalls {
+                var toolUse: [String: Any] = [
+                    "type": "tool_use",
+                    "id": call.id,
+                    "name": call.toolName
+                ]
+                // Parse arguments back to dictionary
+                if let argsData = call.arguments.data(using: .utf8),
+                   let argsDict = try? JSONSerialization.jsonObject(with: argsData) {
+                    toolUse["input"] = argsDict
+                } else {
+                    toolUse["input"] = [:]
+                }
+                contentArray.append(toolUse)
+            }
+            
+            dict["content"] = contentArray
+            return dict
+        }
+        
+        // Handle regular messages (user or assistant without tool calls)
+        dict["role"] = message.role == .assistant ? "assistant" : "user"
+        
+        // Ensure content is never empty for non-tool messages
+        let content = message.content.isEmpty ? " " : message.content
+        dict["content"] = content
 
         return dict
     }

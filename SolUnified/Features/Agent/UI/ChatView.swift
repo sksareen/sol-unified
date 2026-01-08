@@ -211,7 +211,9 @@ struct ChatView: View {
                 .buttonStyle(PlainButtonStyle())
                 .disabled(inputText.isEmpty && !agent.isProcessing)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 50)
         }
     }
 

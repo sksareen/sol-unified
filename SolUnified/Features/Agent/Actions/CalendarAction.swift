@@ -268,7 +268,7 @@ class CalendarActionExecutor {
         for (index, day) in weekdays.enumerated() {
             if lowercased.contains(day) {
                 let targetWeekday = index + 1  // Calendar weekdays are 1-indexed
-                var components = calendar.dateComponents([.weekday], from: now)
+                let components = calendar.dateComponents([.weekday], from: now)
                 let currentWeekday = components.weekday ?? 1
 
                 var daysToAdd = targetWeekday - currentWeekday
@@ -299,7 +299,7 @@ class CalendarActionExecutor {
 
         while currentDate < endDate {
             // Get start of working day
-            var workDayStart = calendar.date(bySettingHour: workingHoursStart, minute: 0, second: 0, of: currentDate) ?? currentDate
+            let workDayStart = calendar.date(bySettingHour: workingHoursStart, minute: 0, second: 0, of: currentDate) ?? currentDate
             let workDayEnd = calendar.date(bySettingHour: workingHoursEnd, minute: 0, second: 0, of: currentDate) ?? currentDate
 
             // Skip weekends
