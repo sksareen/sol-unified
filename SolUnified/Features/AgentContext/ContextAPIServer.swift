@@ -172,6 +172,13 @@ class ContextAPIServer: ObservableObject {
             return handlePostRequest(path: path, body: body)
         }
 
+        if method == "PUT" {
+            // Parse body from request
+            let bodyStartIndex = request.range(of: "\r\n\r\n")?.upperBound ?? request.startIndex
+            let body = String(request[bodyStartIndex...])
+            return handlePutRequest(path: path, body: body)
+        }
+
         guard method == "GET" else {
             return httpResponse(status: 405, body: ["error": "Method not allowed"])
         }
@@ -640,9 +647,24 @@ class ContextAPIServer: ObservableObject {
         switch path {
         case "/agent/actions":
             return handleCreateAction(body: body)
+        case "/people":
+            return handleCreatePerson(body: body)
         default:
             return httpResponse(status: 404, body: ["error": "POST endpoint not found", "path": path])
         }
+    }
+
+    // MARK: - PUT Request Handler
+
+    private func handlePutRequest(path: String, body: String) -> String {
+        // Match /people/{id} pattern
+        if path.hasPrefix("/people/") {
+            let personId = String(path.dropFirst("/people/".count))
+            if !personId.isEmpty && !personId.contains("/") {
+                return handleUpdatePerson(id: personId, body: body)
+            }
+        }
+        return httpResponse(status: 404, body: ["error": "PUT endpoint not found", "path": path])
     }
 
     private func handleCreateAction(body: String) -> String {
@@ -695,6 +717,177 @@ class ContextAPIServer: ObservableObject {
                 "action_id": action.id,
                 "message": "Action created successfully"
             ])
+
+        } catch {
+            return httpResponse(status: 400, body: ["error": "JSON parsing error: \(error.localizedDescription)"])
+        }
+    }
+
+    // MARK: - Create Person Handler
+
+    private func handleCreatePerson(body: String) -> String {
+        guard let data = body.data(using: .utf8) else {
+            return httpResponse(status: 400, body: ["error": "Invalid request body"])
+        }
+
+        // Expected JSON structure:
+        // {
+        //   "name": "John Doe" (required),
+        //   "one_liner": "CEO at Acme Corp",
+        //   "notes": "Met at conference...",
+        //   "email": "john@example.com",
+        //   "phone": "+1234567890",
+        //   "linkedin": "https://linkedin.com/in/johndoe",
+        //   "location": "San Francisco, CA",
+        //   "current_city": "San Francisco",
+        //   "tags": ["investor", "tech"]
+        // }
+
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return httpResponse(status: 400, body: ["error": "Invalid JSON"])
+            }
+
+            guard let name = json["name"] as? String, !name.isEmpty else {
+                return httpResponse(status: 400, body: ["error": "Missing required field: name"])
+            }
+
+            // Create Person object
+            var person = Person(name: name)
+            person.oneLiner = json["one_liner"] as? String
+            person.notes = json["notes"] as? String
+            person.email = json["email"] as? String
+            person.phone = json["phone"] as? String
+            person.linkedin = json["linkedin"] as? String
+            person.location = json["location"] as? String
+            person.currentCity = json["current_city"] as? String
+            person.boardPriority = json["board_priority"] as? String
+
+            if let tags = json["tags"] as? [String] {
+                person.tags = tags
+            }
+
+            // Save using semaphore for main thread access
+            var success = false
+            let semaphore = DispatchSemaphore(value: 0)
+
+            DispatchQueue.main.async {
+                success = PeopleStore.shared.savePerson(person)
+                semaphore.signal()
+            }
+
+            _ = semaphore.wait(timeout: .now() + 5)
+
+            if success {
+                return httpResponse(status: 201, body: [
+                    "success": true,
+                    "person_id": person.id,
+                    "message": "Contact created successfully"
+                ])
+            } else {
+                return httpResponse(status: 500, body: ["error": "Failed to save contact"])
+            }
+
+        } catch {
+            return httpResponse(status: 400, body: ["error": "JSON parsing error: \(error.localizedDescription)"])
+        }
+    }
+
+    // MARK: - Update Person Handler
+
+    private func handleUpdatePerson(id: String, body: String) -> String {
+        guard let data = body.data(using: .utf8) else {
+            return httpResponse(status: 400, body: ["error": "Invalid request body"])
+        }
+
+        // Expected JSON structure (all fields optional, only provided fields are updated):
+        // {
+        //   "name": "John Doe",
+        //   "one_liner": "CEO at Acme Corp",
+        //   "notes": "Updated notes...",
+        //   "email": "john@example.com",
+        //   "phone": "+1234567890",
+        //   "linkedin": "https://linkedin.com/in/johndoe",
+        //   "location": "San Francisco, CA",
+        //   "current_city": "San Francisco",
+        //   "tags": ["investor", "tech"]
+        // }
+
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return httpResponse(status: 400, body: ["error": "Invalid JSON"])
+            }
+
+            // Find existing person using semaphore
+            var existingPerson: Person?
+            let semaphore = DispatchSemaphore(value: 0)
+
+            DispatchQueue.main.async {
+                existingPerson = PeopleStore.shared.getPerson(id: id)
+                semaphore.signal()
+            }
+
+            _ = semaphore.wait(timeout: .now() + 5)
+
+            guard var person = existingPerson else {
+                return httpResponse(status: 404, body: ["error": "Contact not found", "id": id])
+            }
+
+            // Update fields if provided
+            if let name = json["name"] as? String, !name.isEmpty {
+                person.name = name
+            }
+            if let oneLiner = json["one_liner"] as? String {
+                person.oneLiner = oneLiner.isEmpty ? nil : oneLiner
+            }
+            if let notes = json["notes"] as? String {
+                person.notes = notes.isEmpty ? nil : notes
+            }
+            if let email = json["email"] as? String {
+                person.email = email.isEmpty ? nil : email
+            }
+            if let phone = json["phone"] as? String {
+                person.phone = phone.isEmpty ? nil : phone
+            }
+            if let linkedin = json["linkedin"] as? String {
+                person.linkedin = linkedin.isEmpty ? nil : linkedin
+            }
+            if let location = json["location"] as? String {
+                person.location = location.isEmpty ? nil : location
+            }
+            if let currentCity = json["current_city"] as? String {
+                person.currentCity = currentCity.isEmpty ? nil : currentCity
+            }
+            if let boardPriority = json["board_priority"] as? String {
+                person.boardPriority = boardPriority.isEmpty ? nil : boardPriority
+            }
+            if let tags = json["tags"] as? [String] {
+                person.tags = tags
+            }
+
+            // Update timestamp
+            person.updatedAt = Date()
+
+            // Save using semaphore for main thread access
+            var success = false
+            let saveSemaphore = DispatchSemaphore(value: 0)
+
+            DispatchQueue.main.async {
+                success = PeopleStore.shared.savePerson(person)
+                saveSemaphore.signal()
+            }
+
+            _ = saveSemaphore.wait(timeout: .now() + 5)
+
+            if success {
+                return httpResponse(status: 200, body: [
+                    "success": true,
+                    "person_id": person.id,
+                    "message": "Contact updated successfully"
+                ])
+            } else {
+                return httpResponse(status: 500, body: ["error": "Failed to update contact"])
+            }
 
         } catch {
             return httpResponse(status: 400, body: ["error": "JSON parsing error: \(error.localizedDescription)"])

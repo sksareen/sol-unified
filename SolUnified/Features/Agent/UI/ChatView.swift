@@ -93,7 +93,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    if let conversation = agent.currentConversation {
+                    if let conversation = agent.currentConversation, !conversation.messages.isEmpty {
                         ForEach(conversation.messages) { message in
                             ChatMessageView(message: message)
                                 .id(message.id)
@@ -115,31 +115,81 @@ struct ChatView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "brain")
-                .font(.system(size: 48))
-                .foregroundColor(Color.brutalistTextSecondary.opacity(0.5))
+        VStack(spacing: 24) {
+            Spacer()
 
-            Text("Start a conversation")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(Color.brutalistTextSecondary)
+            // Welcome header
+            VStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 40))
+                    .foregroundColor(Color.brutalistAccent)
 
-            Text("Ask me to schedule meetings, look up contacts, or help with tasks.")
-                .font(.system(size: 14))
-                .foregroundColor(Color.brutalistTextSecondary.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
+                Text("Hi! I'm your personal assistant.")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color.brutalistTextPrimary)
 
-            // Example prompts
-            VStack(spacing: 8) {
-                examplePrompt("Schedule coffee with Sarah next week")
-                examplePrompt("What do I know about my preferences?")
-                examplePrompt("Find contact info for John")
+                Text("I can help you manage your calendar, remember things about people, search your notes, and more.")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color.brutalistTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 400)
             }
-            .padding(.top, 8)
+
+            // Example categories
+            VStack(alignment: .leading, spacing: 16) {
+                exampleCategory(
+                    icon: "person.2.fill",
+                    title: "People & Network",
+                    examples: [
+                        "Who do I know at Google?",
+                        "Remember that I met Alex at the conference",
+                        "Add a connection between Sarah and Mike"
+                    ]
+                )
+
+                exampleCategory(
+                    icon: "calendar",
+                    title: "Calendar & Scheduling",
+                    examples: [
+                        "What's on my calendar this week?",
+                        "Schedule lunch with David on Friday"
+                    ]
+                )
+
+                exampleCategory(
+                    icon: "brain.head.profile",
+                    title: "Memory & Context",
+                    examples: [
+                        "What do you know about my preferences?",
+                        "Remember that I prefer morning meetings"
+                    ]
+                )
+            }
+            .frame(maxWidth: 500)
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+
+    private func exampleCategory(icon: String, title: String, examples: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color.brutalistAccent)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color.brutalistTextSecondary)
+            }
+
+            FlowLayout(spacing: 8) {
+                ForEach(examples, id: \.self) { example in
+                    examplePrompt(example)
+                }
+            }
+        }
     }
 
     private func examplePrompt(_ text: String) -> some View {

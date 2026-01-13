@@ -68,15 +68,19 @@ class ValueComputer: ObservableObject {
         // 3. Compute Context (The "Eyes") - Trigger Vision if needed
         var contextLabel = dominantApp
         var primaryActivity = dominantApp
-        
-        // If context is ambiguous (Browser/Social), use Vision to get ground truth
-        // Or randomly sample every 5 mins to build dataset
-        let needsVision = isAmbiguousContext(dominantApp) || Int.random(in: 0...4) == 0
-        
-        if needsVision {
-            if let (tag, description) = await captureAndAnalyzeContext() {
-                contextLabel = tag
-                primaryActivity = description // Store the "OCR Summary" as the activity
+
+        // Only use Neural Context (screen capture) if explicitly enabled in Settings
+        // This feature requires Screen Recording permission
+        if AppSettings.shared.neuralContextEnabled {
+            // If context is ambiguous (Browser/Social), use Vision to get ground truth
+            // Or randomly sample every 5 mins to build dataset
+            let needsVision = isAmbiguousContext(dominantApp) || Int.random(in: 0...4) == 0
+
+            if needsVision {
+                if let (tag, description) = await captureAndAnalyzeContext() {
+                    contextLabel = tag
+                    primaryActivity = description // Store the "OCR Summary" as the activity
+                }
             }
         }
         

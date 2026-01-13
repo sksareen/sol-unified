@@ -149,16 +149,20 @@ class AgentDaemonManager: ObservableObject {
         }
 
         print("🤖 Starting agent daemon...")
+        print("   Python: \(pythonPath)")
+        print("   PYTHONPATH: \(agentModulePath)")
 
         process = Process()
         process?.executableURL = URL(fileURLWithPath: pythonPath)
         process?.arguments = ["-m", "agent.sdk.main", "daemon"]
         process?.currentDirectoryURL = URL(fileURLWithPath: agentModulePath)
 
-        // Set up environment
-        var env = ProcessInfo.processInfo.environment
-        env["PYTHONUNBUFFERED"] = "1"  // Ensure output isn't buffered
-        env["PYTHONPATH"] = agentModulePath  // Add project root to Python path
+        // Set up environment - start fresh to avoid issues
+        var env: [String: String] = [:]
+        env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
+        env["HOME"] = NSHomeDirectory()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONPATH"] = agentModulePath
         if let apiKey = UserDefaults.standard.string(forKey: "claudeAPIKey"), !apiKey.isEmpty {
             env["ANTHROPIC_API_KEY"] = apiKey
         }
@@ -291,15 +295,10 @@ class AgentDaemonManager: ObservableObject {
         cleanup()
 
         if exitCode != 0 && isEnabled {
-            // Unexpected termination, try to restart after delay
-            lastError = "Process exited with code \(exitCode)"
-            statusMessage = "Crashed - restarting..."
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-                guard let self = self, self.isEnabled, !self.isRunning else { return }
-                print("🤖 Attempting to restart agent daemon...")
-                self.start()
-            }
+            // Unexpected termination - don't auto-restart to avoid loops
+            lastError = "Process exited with code \(exitCode). Check logs."
+            statusMessage = "Stopped (exit code \(exitCode))"
+            print("🤖 Agent daemon crashed. Manual restart required.")
         }
     }
 

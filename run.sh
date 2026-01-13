@@ -14,8 +14,6 @@ echo ""
 echo "🚀 Launching Sol Unified..."
 open ".build/Sol Unified.app"
 
-# Follow logs
-echo "📋 Following logs (Ctrl+C to stop)..."
-sleep 2
-log stream --predicate 'subsystem == "com.solunified.app" OR process == "Sol Unified"' --level debug 2>/dev/null || echo "Log streaming not available, check Console.app for logs"
+echo ""
+echo "✅ App launched. Check Console.app for detailed logs if needed."
 

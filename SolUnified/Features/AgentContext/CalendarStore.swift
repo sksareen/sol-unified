@@ -22,6 +22,11 @@ class CalendarStore: ObservableObject {
 
     private var eventStore = EKEventStore()
 
+    // Cache for events by date (date string -> events)
+    private var eventsCache: [String: [CalendarEvent]] = [:]
+    private var cacheFetchTimes: [String: Date] = [:]
+    private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
     private init() {
         // Listen for calendar database changes (sync completion)
         NotificationCenter.default.addObserver(
@@ -29,15 +34,36 @@ class CalendarStore: ObservableObject {
             object: eventStore,
             queue: .main
         ) { [weak self] _ in
-            print("📅 Event store changed - refreshing calendars")
+            print("📅 Event store changed - invalidating cache and refreshing")
             Task { @MainActor in
-                await self?.refreshTodayEvents()
+                self?.invalidateCache()
+                await self?.refreshTodayEvents(forceRefresh: true)
             }
         }
 
         Task {
             await requestAccess()
         }
+    }
+
+    /// Invalidate all cached events
+    func invalidateCache() {
+        eventsCache.removeAll()
+        cacheFetchTimes.removeAll()
+    }
+
+    /// Get date string for cache key
+    private func cacheKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    /// Check if cache is valid for a date
+    private func isCacheValid(for date: Date) -> Bool {
+        let key = cacheKey(for: date)
+        guard let fetchTime = cacheFetchTimes[key] else { return false }
+        return Date().timeIntervalSince(fetchTime) < cacheExpirationSeconds
     }
 
     deinit {
@@ -123,7 +149,15 @@ class CalendarStore: ObservableObject {
         }
     }
 
-    func getEvents(for date: Date) async -> [CalendarEvent] {
+    func getEvents(for date: Date, forceRefresh: Bool = false) async -> [CalendarEvent] {
+        let key = cacheKey(for: date)
+
+        // Return cached events if valid and not forcing refresh
+        if !forceRefresh && isCacheValid(for: date), let cached = eventsCache[key] {
+            print("📅 Using cached events for \(key)")
+            return cached
+        }
+
         if !hasAccess {
             await requestAccess()
             guard hasAccess else { return [] }
@@ -164,7 +198,7 @@ class CalendarStore: ObservableObject {
         let ekEvents = eventStore.events(matching: predicate)
         print("📅 Found \(ekEvents.count) events")
 
-        return ekEvents.map { event in
+        let events = ekEvents.map { event in
             CalendarEvent(
                 id: event.eventIdentifier ?? UUID().uuidString,
                 title: event.title ?? "Untitled",
@@ -177,11 +211,24 @@ class CalendarStore: ObservableObject {
                 isAllDay: event.isAllDay
             )
         }.sorted { $0.startDate < $1.startDate }
+
+        // Cache the results
+        eventsCache[key] = events
+        cacheFetchTimes[key] = Date()
+        print("📅 Cached \(events.count) events for \(key)")
+
+        return events
     }
 
-    func refreshTodayEvents() async {
+    func refreshTodayEvents(forceRefresh: Bool = false) async {
+        // Skip if we have valid cache and not forcing refresh
+        if !forceRefresh && isCacheValid(for: Date()) && !todayEvents.isEmpty {
+            print("📅 Skipping refresh - using cached today events")
+            return
+        }
+
         isLoading = true
-        todayEvents = await getEvents(for: Date())
+        todayEvents = await getEvents(for: Date(), forceRefresh: forceRefresh)
         isLoading = false
     }
 

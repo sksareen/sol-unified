@@ -130,7 +130,17 @@ class AppSettings: ObservableObject {
             }
         }
     }
-    
+
+    /// Neural Context uses screen capture to analyze what you're actually doing
+    /// (e.g., distinguishing "reading docs" from "watching YouTube" in Chrome)
+    /// Requires Screen Recording permission. Off by default.
+    @Published var neuralContextEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(neuralContextEnabled, forKey: "neuralContextEnabled")
+            InternalAppTracker.shared.trackSettingChange(key: "neuralContextEnabled", value: neuralContextEnabled ? "true" : "false")
+        }
+    }
+
     // Daily Notes settings
     @Published var dailyNoteDateFormat: String {
         didSet {
@@ -191,6 +201,7 @@ class AppSettings: ObservableObject {
         self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
         self.keyboardTrackingEnabled = UserDefaults.standard.bool(forKey: "keyboardTrackingEnabled")
         self.mouseTrackingEnabled = UserDefaults.standard.bool(forKey: "mouseTrackingEnabled")
+        self.neuralContextEnabled = UserDefaults.standard.bool(forKey: "neuralContextEnabled") // Defaults to false
         
         // Daily notes settings
         self.dailyNoteDateFormat = UserDefaults.standard.string(forKey: "dailyNoteDateFormat") ?? "MM-dd-yyyy"
@@ -681,21 +692,45 @@ struct SettingsView: View {
                     .padding(.vertical, 8)
                     
                     Divider()
-                    
+
+                    // Neural Context (Screen Capture)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Enable Neural Context", isOn: $settings.neuralContextEnabled)
+                            .toggleStyle(SwitchToggleStyle())
+
+                        Text("Captures screenshots periodically to understand what you're actually doing (e.g., 'reading docs' vs 'watching YouTube' in Chrome). Requires Screen Recording permission.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+
+                        if settings.neuralContextEnabled {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 11))
+                                Text("Screen Recording permission required")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+
+                    Divider()
+
                     // Privacy note
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "lock.shield")
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
-                        
+
                         Text("All data is stored locally on your device and is never sent to the cloud.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 8)
-                    
+
                     Divider()
-                    
+
                     // Test button
                     HStack {
                         Button("Test Event") {

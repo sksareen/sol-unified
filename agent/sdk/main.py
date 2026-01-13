@@ -21,7 +21,7 @@ from rich.table import Table
 from .config import get_config, reload_config
 from .tools.calendar import get_calendar_events
 from .tools.context import get_context
-from .tools.people import lookup_person
+from .tools.people import lookup_person, create_contact, update_contact
 from .workflows.meeting_prep import run_meeting_prep
 from .daemon.scheduler import MeetingPrepScheduler
 
@@ -74,6 +74,45 @@ def run(task: str):
                     "name": {"type": "string", "description": "Person's name"}
                 },
                 "required": ["name"]
+            }
+        },
+        {
+            "name": "create_contact",
+            "description": "Create a new contact in the People CRM",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Person's full name (required)"},
+                    "one_liner": {"type": "string", "description": "Short description like 'CEO at Acme Corp'"},
+                    "notes": {"type": "string", "description": "Notes about the person"},
+                    "email": {"type": "string", "description": "Email address"},
+                    "phone": {"type": "string", "description": "Phone number"},
+                    "linkedin": {"type": "string", "description": "LinkedIn profile URL"},
+                    "location": {"type": "string", "description": "Full location"},
+                    "current_city": {"type": "string", "description": "Current city"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
+            "name": "update_contact",
+            "description": "Update an existing contact in the People CRM",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Contact ID (required)"},
+                    "name": {"type": "string", "description": "Updated name"},
+                    "one_liner": {"type": "string", "description": "Updated short description"},
+                    "notes": {"type": "string", "description": "Updated notes"},
+                    "email": {"type": "string", "description": "Updated email"},
+                    "phone": {"type": "string", "description": "Updated phone"},
+                    "linkedin": {"type": "string", "description": "Updated LinkedIn URL"},
+                    "location": {"type": "string", "description": "Updated location"},
+                    "current_city": {"type": "string", "description": "Updated current city"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Updated tags (replaces existing)"}
+                },
+                "required": ["id"]
             }
         },
         {
@@ -149,6 +188,31 @@ def execute_tool(name: str, args: dict) -> dict:
         return asyncio.run(get_calendar_events(args.get("date")))
     elif name == "lookup_person":
         return asyncio.run(lookup_person(args.get("name", "")))
+    elif name == "create_contact":
+        return asyncio.run(create_contact(
+            name=args.get("name", ""),
+            one_liner=args.get("one_liner"),
+            notes=args.get("notes"),
+            email=args.get("email"),
+            phone=args.get("phone"),
+            linkedin=args.get("linkedin"),
+            location=args.get("location"),
+            current_city=args.get("current_city"),
+            tags=args.get("tags"),
+        ))
+    elif name == "update_contact":
+        return asyncio.run(update_contact(
+            id=args.get("id", ""),
+            name=args.get("name"),
+            one_liner=args.get("one_liner"),
+            notes=args.get("notes"),
+            email=args.get("email"),
+            phone=args.get("phone"),
+            linkedin=args.get("linkedin"),
+            location=args.get("location"),
+            current_city=args.get("current_city"),
+            tags=args.get("tags"),
+        ))
     elif name == "get_context":
         return asyncio.run(get_context())
     else:
