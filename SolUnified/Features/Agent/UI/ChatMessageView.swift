@@ -167,6 +167,7 @@ struct ChatMessageView: View {
         case .saveMemory: return "square.and.arrow.down.fill"
         case .searchPeople: return "person.2.fill"
         case .addPerson: return "person.badge.plus"
+        case .updatePerson: return "person.fill.checkmark"
         case .addConnection: return "link"
         case .getNetwork: return "network"
         }

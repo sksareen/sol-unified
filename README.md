@@ -70,6 +70,15 @@ Press `Option + p` and everything is right there. No more app switching. No more
 - Syncs with `agent_state.json` for AI agent integration
 - Filter by status and priority
 
+### 👥 People CRM (NEW)
+- **Personal network management** — Track contacts with rich metadata
+- **Organizations** — Link people to companies, schools, and other orgs
+- **Connections** — Map relationships between people in your network
+- **Network graph** — Force-directed visualization of your connections
+- **Flexible tagging** — Organize contacts with custom tags
+- **AI agent integration** — Ask "who do I know at [company]?" and get answers
+- **Obsidian import** — Migrate from existing Obsidian CRM databases
+
 ### 🎨 Design
 - Brutalist, information-dense UI
 - Light and dark mode
@@ -115,9 +124,15 @@ Creates `SolUnified-v1.2.dmg` for distribution.
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |----------|--------|
-| `Cmd + 1-5` | Switch tabs |
+| `Cmd + 1` | Agent tab |
+| `Cmd + 2` | Calendar tab |
+| `Cmd + 3` | Notes tab |
+| `Cmd + 4` | Tasks tab |
+| `Cmd + 5` | People tab |
+| `Cmd + 6` | Context tab |
 | `Cmd + P` | Focus vault search |
 | `Cmd + Shift + B` | Toggle vault sidebar |
+| `Cmd + J` | Toggle terminal panel |
 | `Cmd + ,` | Open Settings |
 | `Cmd + =/-` | Resize window |
 | `Esc` | Close modals |
@@ -237,15 +252,18 @@ Now any Claude instance can understand:
 - [x] **Unified Activity Log** — Streamlined activity stream merging semantic contexts and app sessions
 - [x] **Performance UI** — Real-time rendering fixes and better Mac-native aesthetics
 
-### 🔄 Phase 4: Intelligence Layer (Next)
-- [ ] **Embedded Claude Code** — Direct integration of AI agents into the app sidebar/panel
-- [ ] **One-Place Content Access** — Chat with your context, clipboard, and notes in a single interface
+### ✅ Phase 4: Intelligence Layer (v1.4)
+- [x] **AI Agent Tab** — Built-in Claude-powered assistant with tool use
+- [x] **Agent Welcome Screen** — Example prompts and categories for first-time users
+- [x] **People CRM** — Full personal network management with graph visualization
+- [x] **Agent Tools** — 12 tools including calendar, contacts, memory, and people search
+- [x] **Calendar Caching** — Smart lazy loading for better performance
+- [x] **Privacy Controls** — Neural Context (screen capture) now opt-in
+
+### 🔄 Phase 5: Advanced Intelligence (Next)
 - [ ] **Smart search** — AI-powered search across all context types
 - [ ] **Email capture** — Ingest and search email context
-
-### 🚀 Phase 5: Advanced Intelligence
 - [ ] **Browser integration** — Capture tabs and reading history
-- [ ] **Social network tracking** — Track relationships and interactions
 - [ ] **Automated tagging** — AI classification of all captured data
 - [ ] **Workflow triggers** — Actions based on context patterns
 - [ ] **Predictive context** — Suggest relevant contexts based on patterns

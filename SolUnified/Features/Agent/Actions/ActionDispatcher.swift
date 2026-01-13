@@ -52,6 +52,9 @@ class ActionDispatcher {
             case .addPerson:
                 return try await executeAddPerson(toolCall)
 
+            case .updatePerson:
+                return try await executeUpdatePerson(toolCall)
+
             case .addConnection:
                 return try await executeAddConnection(toolCall)
 
@@ -411,7 +414,12 @@ class ActionDispatcher {
         var person = Person(
             name: args.name,
             oneLiner: args.one_liner,
-            email: args.email
+            notes: args.notes,
+            location: args.location,
+            currentCity: args.current_city,
+            email: args.email,
+            phone: args.phone,
+            linkedin: args.linkedin
         )
         person.tags = args.tags ?? []
 
@@ -421,6 +429,84 @@ class ActionDispatcher {
             "success": success,
             "message": success ? "Person '\(args.name)' added successfully" : "Failed to add person",
             "person_id": person.id
+        ]
+
+        let resultData = try JSONSerialization.data(withJSONObject: result)
+        return ToolResult(
+            toolCallId: toolCall.id,
+            result: String(data: resultData, encoding: .utf8) ?? "{}",
+            success: success
+        )
+    }
+
+    private func executeUpdatePerson(_ toolCall: ToolCall) async throws -> ToolResult {
+        guard let args = parseArguments(toolCall.arguments, as: UpdatePersonArgs.self) else {
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: "{\"error\": \"Invalid arguments for update_person\"}",
+                success: false
+            )
+        }
+
+        // Find person by ID or name
+        var person: Person?
+        if let id = args.id {
+            person = PeopleStore.shared.getPerson(id: id)
+        } else if let name = args.name {
+            person = PeopleStore.shared.getPersonByName(name)
+        }
+
+        guard var existingPerson = person else {
+            let identifier = args.id ?? args.name ?? "unknown"
+            let result: [String: Any] = [
+                "success": false,
+                "message": "Person '\(identifier)' not found. Use search_people to find the correct person first."
+            ]
+            let resultData = try JSONSerialization.data(withJSONObject: result)
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: String(data: resultData, encoding: .utf8) ?? "{}",
+                success: false
+            )
+        }
+
+        // Update fields if provided
+        if let name = args.new_name, !name.isEmpty {
+            existingPerson.name = name
+        }
+        if let oneLiner = args.one_liner {
+            existingPerson.oneLiner = oneLiner.isEmpty ? nil : oneLiner
+        }
+        if let notes = args.notes {
+            existingPerson.notes = notes.isEmpty ? nil : notes
+        }
+        if let email = args.email {
+            existingPerson.email = email.isEmpty ? nil : email
+        }
+        if let phone = args.phone {
+            existingPerson.phone = phone.isEmpty ? nil : phone
+        }
+        if let linkedin = args.linkedin {
+            existingPerson.linkedin = linkedin.isEmpty ? nil : linkedin
+        }
+        if let location = args.location {
+            existingPerson.location = location.isEmpty ? nil : location
+        }
+        if let currentCity = args.current_city {
+            existingPerson.currentCity = currentCity.isEmpty ? nil : currentCity
+        }
+        if let tags = args.tags {
+            existingPerson.tags = tags
+        }
+
+        existingPerson.updatedAt = Date()
+
+        let success = PeopleStore.shared.savePerson(existingPerson)
+
+        let result: [String: Any] = [
+            "success": success,
+            "message": success ? "Person '\(existingPerson.name)' updated successfully" : "Failed to update person",
+            "person_id": existingPerson.id
         ]
 
         let resultData = try JSONSerialization.data(withJSONObject: result)
@@ -579,7 +665,26 @@ struct SearchPeopleArgs: Codable {
 struct AddPersonArgs: Codable {
     let name: String
     let email: String?
+    let phone: String?
     let one_liner: String?
+    let notes: String?
+    let linkedin: String?
+    let location: String?
+    let current_city: String?
+    let tags: [String]?
+}
+
+struct UpdatePersonArgs: Codable {
+    let id: String?          // ID of person to update (preferred)
+    let name: String?        // Name to search for if ID not provided
+    let new_name: String?    // New name to set
+    let email: String?
+    let phone: String?
+    let one_liner: String?
+    let notes: String?
+    let linkedin: String?
+    let location: String?
+    let current_city: String?
     let tags: [String]?
 }
 

@@ -182,6 +182,13 @@ class AgentCore: ObservableObject {
         tools.append(.searchContext)
         tools.append(.saveMemory)
 
+        // Always include people/CRM tools
+        tools.append(.searchPeople)
+        tools.append(.addPerson)
+        tools.append(.updatePerson)
+        tools.append(.addConnection)
+        tools.append(.getNetwork)
+
         // Add scheduling tools if intent suggests it
         if context.intent.type == .scheduleMeeting {
             tools.append(.checkCalendar)

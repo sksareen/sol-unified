@@ -320,23 +320,96 @@ class ClaudeAPIClient: ObservableObject {
                 "properties": [
                     "name": [
                         "type": "string",
-                        "description": "Person's full name"
+                        "description": "Person's full name (required)"
                     ],
                     "email": [
                         "type": "string",
                         "description": "Email address"
                     ],
+                    "phone": [
+                        "type": "string",
+                        "description": "Phone number"
+                    ],
                     "one_liner": [
                         "type": "string",
-                        "description": "Brief description or role"
+                        "description": "Brief description like 'CEO at Acme Corp'"
+                    ],
+                    "notes": [
+                        "type": "string",
+                        "description": "Notes about the person, how you met, etc."
+                    ],
+                    "linkedin": [
+                        "type": "string",
+                        "description": "LinkedIn profile URL"
+                    ],
+                    "location": [
+                        "type": "string",
+                        "description": "Full location like 'San Francisco, CA'"
+                    ],
+                    "current_city": [
+                        "type": "string",
+                        "description": "Current city of residence"
                     ],
                     "tags": [
                         "type": "array",
                         "items": ["type": "string"],
-                        "description": "Tags/categories for this person"
+                        "description": "Tags/categories like ['investor', 'tech']"
                     ]
                 ],
                 "required": ["name"]
+            ]
+
+        case .updatePerson:
+            return [
+                "type": "object",
+                "properties": [
+                    "id": [
+                        "type": "string",
+                        "description": "Person's ID (use search_people first to find it)"
+                    ],
+                    "name": [
+                        "type": "string",
+                        "description": "Person's name to search for (if ID not known)"
+                    ],
+                    "new_name": [
+                        "type": "string",
+                        "description": "New name to set"
+                    ],
+                    "email": [
+                        "type": "string",
+                        "description": "Updated email address"
+                    ],
+                    "phone": [
+                        "type": "string",
+                        "description": "Updated phone number"
+                    ],
+                    "one_liner": [
+                        "type": "string",
+                        "description": "Updated brief description"
+                    ],
+                    "notes": [
+                        "type": "string",
+                        "description": "Updated notes"
+                    ],
+                    "linkedin": [
+                        "type": "string",
+                        "description": "Updated LinkedIn URL"
+                    ],
+                    "location": [
+                        "type": "string",
+                        "description": "Updated location"
+                    ],
+                    "current_city": [
+                        "type": "string",
+                        "description": "Updated current city"
+                    ],
+                    "tags": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "description": "Updated tags (replaces existing)"
+                    ]
+                ],
+                "required": []
             ]
 
         case .addConnection:

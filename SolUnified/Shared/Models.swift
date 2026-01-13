@@ -1120,6 +1120,7 @@ enum AgentTool: String, CaseIterable {
     // People/CRM tools
     case searchPeople = "search_people"
     case addPerson = "add_person"
+    case updatePerson = "update_person"
     case addConnection = "add_connection"
     case getNetwork = "get_network"
 
@@ -1134,6 +1135,7 @@ enum AgentTool: String, CaseIterable {
         case .saveMemory: return "Save Memory"
         case .searchPeople: return "Search People"
         case .addPerson: return "Add Person"
+        case .updatePerson: return "Update Person"
         case .addConnection: return "Add Connection"
         case .getNetwork: return "Get Network"
         }
@@ -1150,6 +1152,7 @@ enum AgentTool: String, CaseIterable {
         case .saveMemory: return "Save a new fact or preference to memory"
         case .searchPeople: return "Search people in the CRM by name, company, tag, or notes"
         case .addPerson: return "Add a new person to the CRM database"
+        case .updatePerson: return "Update an existing person's information in the CRM"
         case .addConnection: return "Create a connection between two people"
         case .getNetwork: return "Get network graph data including people and their connections"
         }
