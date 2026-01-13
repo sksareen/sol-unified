@@ -58,7 +58,8 @@ struct CalendarView: View {
 
                 Button(action: {
                     Task {
-                        await calendarStore.retryAccess()
+                        calendarStore.invalidateCache()
+                        await calendarStore.refreshTodayEvents(forceRefresh: true)
                     }
                 }) {
                     Image(systemName: "arrow.clockwise")
