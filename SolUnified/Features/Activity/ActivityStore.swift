@@ -1035,12 +1035,15 @@ class ActivityStore: ObservableObject {
     
     private func tabTabName(_ tab: AppTab) -> String {
         switch tab {
+        case .agent: return "Agent"
+        case .calendar: return "Calendar"
+        case .notes: return "Notes"
+        case .context: return "Context"
         case .tasks: return "Tasks"
         case .agents: return "Agents"
         case .vault: return "Vault"
-        case .context: return "Context"
         case .terminal: return "Terminal"
-        case .agent: return "Agent"
+        case .people: return "People"
         }
     }
     

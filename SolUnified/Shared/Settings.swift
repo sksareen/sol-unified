@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import AppKit
+import EventKit
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -230,6 +231,7 @@ struct SettingsView: View {
     enum SettingsTab: String, CaseIterable {
         case general = "General"
         case agent = "Agent"
+        case calendar = "Calendar"
         case activity = "Activity"
         case screenshots = "Screenshots"
         case vault = "Vault"
@@ -238,6 +240,7 @@ struct SettingsView: View {
             switch self {
             case .general: return "gearshape"
             case .agent: return "brain"
+            case .calendar: return "calendar"
             case .activity: return "chart.line.uptrend.xyaxis"
             case .screenshots: return "camera.viewfinder"
             case .vault: return "folder"
@@ -319,6 +322,8 @@ struct SettingsView: View {
             generalView
         case .agent:
             agentView
+        case .calendar:
+            calendarSettingsView
         case .activity:
             activityView
         case .screenshots:
@@ -480,6 +485,11 @@ struct SettingsView: View {
 
                 Divider()
 
+                // Background Daemon Section
+                AgentDaemonSettingsSection()
+
+                Divider()
+
                 // Info Section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("About the Agent")
@@ -523,6 +533,116 @@ struct SettingsView: View {
             Text(text)
                 .font(.system(size: 12))
                 .foregroundColor(Color.brutalistTextSecondary)
+        }
+    }
+
+    var calendarSettingsView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Calendar")
+                .font(.system(size: 20, weight: .bold))
+
+            Form {
+                // Permission Status
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Calendar Access")
+                        .font(.system(size: 13, weight: .semibold))
+
+                    HStack(spacing: 8) {
+                        if CalendarStore.shared.hasAccess {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 16))
+                            Text("Calendar access granted")
+                                .font(.system(size: 13))
+                                .foregroundColor(.green)
+                        } else {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 16))
+                            Text("Calendar access not granted")
+                                .font(.system(size: 13))
+                                .foregroundColor(.orange)
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            Task {
+                                await CalendarStore.shared.retryAccess()
+                            }
+                        }) {
+                            Text("Request Access")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+
+                        Button(action: {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }) {
+                            Text("Open System Settings")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+
+                    Text("If Sol Unified doesn't appear in System Settings, click 'Request Access' first.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Available Calendars
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Available Calendars")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        Spacer()
+
+                        Button(action: {
+                            Task {
+                                await CalendarStore.shared.refreshTodayEvents()
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                        .help("Refresh calendars")
+                    }
+
+                    if CalendarStore.shared.hasAccess {
+                        CalendarListView()
+                    } else {
+                        Text("Grant calendar access to see available calendars")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                }
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Privacy note
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lock.shield")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+
+                    Text("Sol Unified reads your calendar events locally. No calendar data is sent to any server.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            .formStyle(.grouped)
+
+            Spacer()
         }
     }
 
@@ -765,13 +885,13 @@ struct SettingsView: View {
 struct LogSlider: View {
     @Binding var value: CGFloat
     let range: ClosedRange<CGFloat>
-    
+
     private var logValue: CGFloat {
         let minLog = log(range.lowerBound)
         let maxLog = log(range.upperBound)
         return (log(value) - minLog) / (maxLog - minLog)
     }
-    
+
     var body: some View {
         Slider(
             value: Binding(
@@ -786,6 +906,216 @@ struct LogSlider: View {
             in: 0...1
         )
         .accentColor(Color.brutalistAccent)
+    }
+}
+
+// MARK: - Calendar List View
+struct CalendarListView: View {
+    @State private var calendars: [EKCalendar] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if calendars.isEmpty {
+                Text("No calendars found")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .italic()
+            } else {
+                ForEach(calendars, id: \.calendarIdentifier) { calendar in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(cgColor: calendar.cgColor))
+                            .frame(width: 10, height: 10)
+
+                        Text(calendar.title)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color.brutalistTextPrimary)
+
+                        Spacer()
+
+                        Text(calendar.source?.title ?? "Local")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(3)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            loadCalendars()
+        }
+    }
+
+    private func loadCalendars() {
+        let eventStore = EKEventStore()
+        eventStore.refreshSourcesIfNecessary()
+        calendars = eventStore.calendars(for: .event).sorted { $0.title < $1.title }
+    }
+}
+
+// MARK: - Agent Daemon Settings Section
+struct AgentDaemonSettingsSection: View {
+    @ObservedObject private var daemon = AgentDaemonManager.shared
+    @State private var showLogs = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Background Agent")
+                    .font(.system(size: 13, weight: .semibold))
+
+                Spacer()
+
+                // Status indicator
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(daemon.isRunning ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
+                    Text(daemon.isRunning ? "Running" : "Stopped")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Enable toggle
+            Toggle("Enable background meeting prep", isOn: $daemon.isEnabled)
+                .toggleStyle(SwitchToggleStyle())
+
+            Text("Automatically prepares meeting briefs before external meetings")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+
+            if daemon.isEnabled {
+                // Status details
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Status:")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(daemon.statusSummary)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(daemon.isRunning ? .primary : .orange)
+                    }
+
+                    if let lastCheck = daemon.lastCheckTime {
+                        HStack {
+                            Text("Last check:")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text(lastCheck, style: .relative)
+                                .font(.system(size: 11))
+                        }
+                    }
+
+                    if daemon.meetingsPreparedToday > 0 {
+                        HStack {
+                            Text("Briefs today:")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            Text("\(daemon.meetingsPreparedToday)")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                    }
+
+                    if let error = daemon.lastError {
+                        HStack(alignment: .top) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 10))
+                            Text(error)
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                .padding(10)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(6)
+
+                // Controls
+                HStack(spacing: 12) {
+                    if daemon.isRunning {
+                        Button(action: { daemon.stop() }) {
+                            Label("Stop", systemImage: "stop.fill")
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+
+                        Button(action: { daemon.restart() }) {
+                            Label("Restart", systemImage: "arrow.clockwise")
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    } else {
+                        Button(action: { daemon.start() }) {
+                            Label("Start", systemImage: "play.fill")
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
+
+                    Spacer()
+
+                    Button(action: { showLogs.toggle() }) {
+                        Label("Logs", systemImage: "doc.text")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .sheet(isPresented: $showLogs) {
+            AgentDaemonLogsView()
+        }
+    }
+}
+
+// MARK: - Agent Daemon Logs View
+struct AgentDaemonLogsView: View {
+    @ObservedObject private var daemon = AgentDaemonManager.shared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Agent Daemon Logs")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Button("Close") { dismiss() }
+                    .buttonStyle(BorderlessButtonStyle())
+            }
+            .padding()
+
+            Divider()
+
+            // Logs
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    if daemon.recentLogs.isEmpty {
+                        Text("No logs yet")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .padding()
+                    } else {
+                        ForEach(daemon.recentLogs, id: \.self) { line in
+                            Text(line)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(line.contains("[ERROR]") ? .red : .primary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .background(Color(NSColor.textBackgroundColor))
+        }
+        .frame(width: 600, height: 400)
     }
 }
 

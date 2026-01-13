@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TabNavigator: View {
-    @State private var selectedTab: AppTab = .tasks {
+    @State private var selectedTab: AppTab = .agent {
         didSet {
             // Track tab switch
             InternalAppTracker.shared.trackTabSwitch(to: selectedTab)
@@ -23,22 +23,23 @@ struct TabNavigator: View {
             
             // Tab Bar - Nordic Minimalist Style
             HStack(spacing: 0) {
-            TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
+            TabButton(title: "Agent", tab: .agent, selectedTab: $selectedTab)
                 .keyboardShortcut("1", modifiers: .command)
-            
-            /*
-            TabButton(title: "Agents", tab: .agents, selectedTab: $selectedTab)
-                //.keyboardShortcut("2", modifiers: .command)
-            */
 
-            TabButton(title: "Vault", tab: .vault, selectedTab: $selectedTab)
+            TabButton(title: "Calendar", tab: .calendar, selectedTab: $selectedTab)
                 .keyboardShortcut("2", modifiers: .command)
-            
-            TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
+
+            TabButton(title: "Notes", tab: .notes, selectedTab: $selectedTab)
                 .keyboardShortcut("3", modifiers: .command)
 
-            TabButton(title: "Agent", tab: .agent, selectedTab: $selectedTab)
+            TabButton(title: "Tasks", tab: .tasks, selectedTab: $selectedTab)
                 .keyboardShortcut("4", modifiers: .command)
+
+            TabButton(title: "People", tab: .people, selectedTab: $selectedTab)
+                .keyboardShortcut("5", modifiers: .command)
+
+            TabButton(title: "Context", tab: .context, selectedTab: $selectedTab)
+                .keyboardShortcut("6", modifiers: .command)
 
                 // Hidden shortcut for toggling terminal panel (⌘J)
                 Button(action: {
@@ -161,19 +162,24 @@ struct TabNavigator: View {
                 // Main content
                 Group {
                     switch selectedTab {
-                    case .tasks:
-                        TasksView()
-                    case .agents:
-                        AgentContextView()
-                    case .vault:
+                    case .agent:
+                        ChatView()
+                    case .calendar:
+                        CalendarView()
+                    case .notes:
                         VaultView()
                     case .context:
                         ContextView()
-                    case .agent:
-                        ChatView()
+                    case .tasks:
+                        TasksView()
+                    case .people:
+                        PeopleView()
+                    case .agents:
+                        AgentContextView()
+                    case .vault:
+                        VaultView()  // Legacy fallback
                     case .terminal:
-                        // Legacy - redirect to vault if someone lands here
-                        VaultView()
+                        VaultView()  // Legacy fallback
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

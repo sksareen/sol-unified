@@ -165,6 +165,10 @@ struct ChatMessageView: View {
         case .sendEmail: return "envelope.fill"
         case .searchContext: return "magnifyingglass"
         case .saveMemory: return "square.and.arrow.down.fill"
+        case .searchPeople: return "person.2.fill"
+        case .addPerson: return "person.badge.plus"
+        case .addConnection: return "link"
+        case .getNetwork: return "network"
         }
     }
 

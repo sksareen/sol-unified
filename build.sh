@@ -11,7 +11,7 @@ echo ""
 # Configuration
 APP_NAME="Sol Unified"
 BUNDLE_ID="com.solunified.app"
-VERSION="1.2"
+VERSION="1.4.1"
 BUILD_DIR=".build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_BUNDLE/Contents"
@@ -22,9 +22,9 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 echo "🧹 Cleaning previous build..."
 rm -rf "$APP_BUNDLE"
 
-# Build the Swift executable in release mode
+# Build the Swift executable (debug mode for faster builds)
 echo "⚙️  Building Swift executable..."
-swift build -c release
+swift build
 
 # Create .app bundle structure
 echo "📦 Creating .app bundle..."
@@ -33,7 +33,7 @@ mkdir -p "$RESOURCES_DIR"
 
 # Copy the executable
 echo "📋 Copying executable..."
-cp ".build/release/SolUnified" "$MACOS_DIR/$APP_NAME"
+cp ".build/debug/SolUnified" "$MACOS_DIR/$APP_NAME"
 chmod +x "$MACOS_DIR/$APP_NAME"
 
 # Create Info.plist
@@ -58,7 +58,7 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
 	<key>CFBundleShortVersionString</key>
 	<string>$VERSION</string>
 	<key>CFBundleVersion</key>
-	<string>1.2</string>
+	<string>1.4.1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
@@ -73,6 +73,10 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
 	<string>Sol Unified needs Apple Events permission for clipboard monitoring.</string>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>Sol Unified needs Accessibility permission for global hotkey support.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Sol Unified needs access to your calendars to show your schedule and help prepare for meetings.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Sol Unified needs full access to your calendars to show your schedule and help prepare for meetings.</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 </dict>
@@ -88,9 +92,13 @@ if [ -d "SolUnified/Resources" ]; then
     cp -R SolUnified/Resources/* "$RESOURCES_DIR/" 2>/dev/null || true
 fi
 
-# Optional: Code signing (uncomment if you have a developer certificate)
-# echo "✍️  Signing app..."
-# codesign --force --deep --sign "Developer ID Application: YOUR NAME" "$APP_BUNDLE"
+# Copy entitlements
+echo "📋 Copying entitlements..."
+cp "SolUnified.entitlements" "$CONTENTS_DIR/entitlements.plist"
+
+# Code signing with entitlements (ad-hoc signing for local development)
+echo "✍️  Signing app with entitlements..."
+codesign --force --deep --sign - --entitlements "SolUnified.entitlements" "$APP_BUNDLE"
 
 echo ""
 echo "✅ Build complete!"

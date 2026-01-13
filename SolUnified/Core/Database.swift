@@ -276,6 +276,124 @@ class Database {
         """)
         _ = executeSync("CREATE INDEX IF NOT EXISTS idx_agent_actions_status ON agent_actions(status)")
         _ = executeSync("CREATE INDEX IF NOT EXISTS idx_agent_actions_conversation ON agent_actions(conversation_id)")
+
+        // MARK: - People CRM Tables Migration
+
+        // Migration: Create people table (enhanced contact records)
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS people (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                one_liner TEXT,
+                notes TEXT,
+                location TEXT,
+                current_city TEXT,
+                email TEXT,
+                phone TEXT,
+                linkedin TEXT,
+                board_priority TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_people_name ON people(name)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_people_updated ON people(updated_at DESC)")
+
+        // Migration: Create organizations table (companies + schools)
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS organizations (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                type TEXT NOT NULL,
+                industry TEXT,
+                location TEXT,
+                website TEXT,
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_organizations_name ON organizations(name)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_organizations_type ON organizations(type)")
+
+        // Migration: Create person_organizations junction table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS person_organizations (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL,
+                organization_id TEXT NOT NULL,
+                role TEXT,
+                degree_type TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                graduation_year TEXT,
+                is_current INTEGER DEFAULT 1,
+                FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
+                FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+                UNIQUE(person_id, organization_id, role)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_person_orgs_person ON person_organizations(person_id)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_person_orgs_org ON person_organizations(organization_id)")
+
+        // Migration: Create person_connections table (bidirectional relationships)
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS person_connections (
+                id TEXT PRIMARY KEY,
+                person_a_id TEXT NOT NULL,
+                person_b_id TEXT NOT NULL,
+                context TEXT,
+                connection_type TEXT DEFAULT 'known',
+                strength INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (person_a_id) REFERENCES people(id) ON DELETE CASCADE,
+                FOREIGN KEY (person_b_id) REFERENCES people(id) ON DELETE CASCADE,
+                UNIQUE(person_a_id, person_b_id),
+                CHECK(person_a_id < person_b_id)
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_connections_a ON person_connections(person_a_id)")
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_connections_b ON person_connections(person_b_id)")
+
+        // Migration: Create person_tags table (many-to-many tagging)
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS person_tags (
+                person_id TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                PRIMARY KEY (person_id, tag),
+                FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_person_tags_tag ON person_tags(tag)")
+
+        // Migration: Create network_events table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS network_events (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                location TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_network_events_date ON network_events(start_date)")
+
+        // Migration: Create event_attendees junction table
+        _ = executeSync("""
+            CREATE TABLE IF NOT EXISTS event_attendees (
+                event_id TEXT NOT NULL,
+                person_id TEXT NOT NULL,
+                role TEXT,
+                notes TEXT,
+                PRIMARY KEY (event_id, person_id),
+                FOREIGN KEY (event_id) REFERENCES network_events(id) ON DELETE CASCADE,
+                FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+            )
+        """)
+        _ = executeSync("CREATE INDEX IF NOT EXISTS idx_event_attendees_person ON event_attendees(person_id)")
     }
     
     private func createTables() -> Bool {

@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2</string>
+	<string>1.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>1.2</string>
+	<string>1.4.1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
@@ -28,6 +28,10 @@
 	<string>NSApplication</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Sol Unified needs access to your Photos library to display your photos without duplicating them.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Sol Unified needs access to your calendars to show your schedule and help prepare for meetings.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Sol Unified needs full access to your calendars to show your schedule and help prepare for meetings.</string>
 </dict>
 </plist>
 

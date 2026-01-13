@@ -543,12 +543,117 @@ struct AgentStateFile: Codable {
 
 // MARK: - App State
 enum AppTab: String {
-    case tasks
-    case agents
-    case vault
+    case agent      // AI Agent - now the HOME tab
+    case calendar   // NEW: Calendar view
+    case notes      // RENAMED from vault
     case context
-    case terminal
-    case agent  // AI Agent chat tab
+    case tasks
+    case people     // NEW: People/CRM
+    case agents     // Keep for legacy
+    case vault      // Keep for legacy routing
+    case terminal   // Keep for legacy routing
+}
+
+// MARK: - Agent Action Models
+
+/// An action proposed by the Python agent for user approval
+struct AgentAction: Identifiable, Codable {
+    let id: String
+    let type: AgentActionType
+    let title: String
+    let summary: String
+    let details: String?
+    let relatedEventId: String?
+    let relatedEventTitle: String?
+    let draftContent: String?
+    let actionUrl: String?
+    var status: AgentActionStatus
+    let createdAt: Date
+    var reviewedAt: Date?
+
+    init(
+        id: String = UUID().uuidString,
+        type: AgentActionType,
+        title: String,
+        summary: String,
+        details: String? = nil,
+        relatedEventId: String? = nil,
+        relatedEventTitle: String? = nil,
+        draftContent: String? = nil,
+        actionUrl: String? = nil,
+        status: AgentActionStatus = .pending,
+        createdAt: Date = Date(),
+        reviewedAt: Date? = nil
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.summary = summary
+        self.details = details
+        self.relatedEventId = relatedEventId
+        self.relatedEventTitle = relatedEventTitle
+        self.draftContent = draftContent
+        self.actionUrl = actionUrl
+        self.status = status
+        self.createdAt = createdAt
+        self.reviewedAt = reviewedAt
+    }
+}
+
+enum AgentActionType: String, Codable {
+    case linkedinDraft = "linkedin_draft"
+    case emailDraft = "email_draft"
+    case meetingBrief = "meeting_brief"
+    case researchSummary = "research_summary"
+    case reminder = "reminder"
+    case other = "other"
+
+    var displayName: String {
+        switch self {
+        case .linkedinDraft: return "LinkedIn Message"
+        case .emailDraft: return "Email Draft"
+        case .meetingBrief: return "Meeting Brief"
+        case .researchSummary: return "Research Summary"
+        case .reminder: return "Reminder"
+        case .other: return "Action"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .linkedinDraft: return "link"
+        case .emailDraft: return "envelope"
+        case .meetingBrief: return "doc.text"
+        case .researchSummary: return "magnifyingglass"
+        case .reminder: return "bell"
+        case .other: return "checkmark.circle"
+        }
+    }
+}
+
+enum AgentActionStatus: String, Codable {
+    case pending
+    case approved
+    case dismissed
+    case completed
+}
+
+/// Calendar event representation for API responses
+struct CalendarEvent: Identifiable, Codable {
+    let id: String
+    let title: String
+    let startDate: Date
+    let endDate: Date
+    let location: String?
+    let notes: String?
+    let attendees: [String]
+    let calendarName: String
+    let isAllDay: Bool
+
+    var isExternal: Bool {
+        // External if has attendees from outside your org
+        !attendees.isEmpty
+    }
 }
 
 // MARK: - Contact Models
@@ -958,14 +1063,14 @@ struct ToolResult: Codable {
     }
 }
 
-// MARK: - Agent Action Models
+// MARK: - Agent Tool Action Models (for conversation actions)
 
-struct AgentAction: Identifiable, Codable {
+struct AgentToolAction: Identifiable, Codable {
     let id: String
     let conversationId: String?
     let actionType: String
     let parameters: String
-    var status: ActionStatus
+    var status: ToolActionStatus
     var result: String?
     var error: String?
     let createdAt: Date
@@ -976,7 +1081,7 @@ struct AgentAction: Identifiable, Codable {
         conversationId: String? = nil,
         actionType: String,
         parameters: String,
-        status: ActionStatus = .pending,
+        status: ToolActionStatus = .pending,
         result: String? = nil,
         error: String? = nil,
         createdAt: Date = Date(),
@@ -994,7 +1099,7 @@ struct AgentAction: Identifiable, Codable {
     }
 }
 
-enum ActionStatus: String, Codable {
+enum ToolActionStatus: String, Codable {
     case pending
     case inProgress
     case completed
@@ -1012,6 +1117,11 @@ enum AgentTool: String, CaseIterable {
     case sendEmail = "send_email"
     case searchContext = "search_context"
     case saveMemory = "save_memory"
+    // People/CRM tools
+    case searchPeople = "search_people"
+    case addPerson = "add_person"
+    case addConnection = "add_connection"
+    case getNetwork = "get_network"
 
     var displayName: String {
         switch self {
@@ -1022,6 +1132,10 @@ enum AgentTool: String, CaseIterable {
         case .sendEmail: return "Send Email"
         case .searchContext: return "Search Context"
         case .saveMemory: return "Save Memory"
+        case .searchPeople: return "Search People"
+        case .addPerson: return "Add Person"
+        case .addConnection: return "Add Connection"
+        case .getNetwork: return "Get Network"
         }
     }
 
@@ -1034,6 +1148,10 @@ enum AgentTool: String, CaseIterable {
         case .sendEmail: return "Compose and send an email"
         case .searchContext: return "Search current work context and clipboard"
         case .saveMemory: return "Save a new fact or preference to memory"
+        case .searchPeople: return "Search people in the CRM by name, company, tag, or notes"
+        case .addPerson: return "Add a new person to the CRM database"
+        case .addConnection: return "Create a connection between two people"
+        case .getNetwork: return "Get network graph data including people and their connections"
         }
     }
 }

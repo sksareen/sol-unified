@@ -44,6 +44,19 @@ class ActionDispatcher {
 
             case .saveMemory:
                 return try await executeSaveMemory(toolCall)
+
+            // People/CRM tools
+            case .searchPeople:
+                return try await executeSearchPeople(toolCall)
+
+            case .addPerson:
+                return try await executeAddPerson(toolCall)
+
+            case .addConnection:
+                return try await executeAddConnection(toolCall)
+
+            case .getNetwork:
+                return try await executeGetNetwork(toolCall)
             }
         } catch {
             return ToolResult(
@@ -194,9 +207,25 @@ class ActionDispatcher {
                 return dict
             }
 
+        // Load tasks from agent_state.json
+        let tasks = loadTasksFromAgentState()
+
+        // Filter to active tasks (not archived/completed) unless query specifically asks for them
+        let queryLower = args.query.lowercased()
+        let includeCompleted = queryLower.contains("completed") || queryLower.contains("done") || queryLower.contains("finished")
+        let includeArchived = queryLower.contains("archived") || queryLower.contains("archive") || queryLower.contains("all")
+
+        let filteredTasks = tasks.filter { task in
+            let status = task["status"] as? String ?? ""
+            if status == "archived" && !includeArchived { return false }
+            if status == "completed" && !includeCompleted { return false }
+            return true
+        }
+
         let result: [String: Any] = [
             "query": args.query,
-            "results": Array(clipboardResults)
+            "tasks": filteredTasks,
+            "clipboard_results": Array(clipboardResults)
         ]
 
         let resultData = try JSONSerialization.data(withJSONObject: result)
@@ -207,6 +236,34 @@ class ActionDispatcher {
             result: resultStr,
             success: true
         )
+    }
+
+    // MARK: - Task Loading
+
+    private func loadTasksFromAgentState() -> [[String: Any]] {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let agentStatePath = documents.appendingPathComponent("agent_state.json").path
+
+        guard let data = FileManager.default.contents(atPath: agentStatePath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tasksDict = json["tasks"] as? [String: [String: Any]] else {
+            return []
+        }
+
+        return tasksDict.values.map { task in
+            var taskInfo: [String: Any] = [
+                "id": task["id"] ?? "",
+                "title": task["title"] ?? "",
+                "description": task["description"] ?? "",
+                "status": task["status"] ?? "pending",
+                "priority": task["priority"] ?? "medium",
+                "assigned_to": task["assigned_to"] ?? "me",
+                "project": task["project"] ?? "general"
+            ]
+            if let createdAt = task["created_at"] { taskInfo["created_at"] = createdAt }
+            if let updatedAt = task["updated_at"] { taskInfo["updated_at"] = updatedAt }
+            return taskInfo
+        }
     }
 
     // MARK: - Save Memory
@@ -284,6 +341,200 @@ class ActionDispatcher {
         )
     }
 
+    // MARK: - People/CRM Tools
+
+    private func executeSearchPeople(_ toolCall: ToolCall) async throws -> ToolResult {
+        guard let args = parseArguments(toolCall.arguments, as: SearchPeopleArgs.self) else {
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: "{\"error\": \"Invalid arguments for search_people\"}",
+                success: false
+            )
+        }
+
+        let people = PeopleStore.shared.searchPeople(query: args.query)
+        let results = people.prefix(15).map { person -> [String: Any] in
+            var dict: [String: Any] = [
+                "id": person.id,
+                "name": person.name
+            ]
+            if let email = person.email { dict["email"] = email }
+            if let oneLiner = person.oneLiner { dict["one_liner"] = oneLiner }
+            if !person.tags.isEmpty { dict["tags"] = person.tags }
+            if !person.organizations.isEmpty {
+                dict["organizations"] = person.organizations.compactMap { $0.organization?.name }
+            }
+            dict["connection_count"] = person.connections.count
+            return dict
+        }
+
+        let result: [String: Any] = [
+            "query": args.query,
+            "count": people.count,
+            "people": Array(results)
+        ]
+
+        let resultData = try JSONSerialization.data(withJSONObject: result)
+        let resultStr = String(data: resultData, encoding: .utf8) ?? "{}"
+
+        return ToolResult(
+            toolCallId: toolCall.id,
+            result: resultStr,
+            success: true
+        )
+    }
+
+    private func executeAddPerson(_ toolCall: ToolCall) async throws -> ToolResult {
+        guard let args = parseArguments(toolCall.arguments, as: AddPersonArgs.self) else {
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: "{\"error\": \"Invalid arguments for add_person\"}",
+                success: false
+            )
+        }
+
+        // Check if person already exists
+        if let existing = PeopleStore.shared.getPersonByName(args.name) {
+            let result: [String: Any] = [
+                "success": false,
+                "message": "Person with name '\(args.name)' already exists",
+                "existing_person_id": existing.id
+            ]
+            let resultData = try JSONSerialization.data(withJSONObject: result)
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: String(data: resultData, encoding: .utf8) ?? "{}",
+                success: true
+            )
+        }
+
+        var person = Person(
+            name: args.name,
+            oneLiner: args.one_liner,
+            email: args.email
+        )
+        person.tags = args.tags ?? []
+
+        let success = PeopleStore.shared.savePerson(person)
+
+        let result: [String: Any] = [
+            "success": success,
+            "message": success ? "Person '\(args.name)' added successfully" : "Failed to add person",
+            "person_id": person.id
+        ]
+
+        let resultData = try JSONSerialization.data(withJSONObject: result)
+        return ToolResult(
+            toolCallId: toolCall.id,
+            result: String(data: resultData, encoding: .utf8) ?? "{}",
+            success: success
+        )
+    }
+
+    private func executeAddConnection(_ toolCall: ToolCall) async throws -> ToolResult {
+        guard let args = parseArguments(toolCall.arguments, as: AddConnectionArgs.self) else {
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: "{\"error\": \"Invalid arguments for add_connection\"}",
+                success: false
+            )
+        }
+
+        // Find both people by name
+        guard let personA = PeopleStore.shared.getPersonByName(args.person_a_name) else {
+            let result: [String: Any] = [
+                "success": false,
+                "message": "Person '\(args.person_a_name)' not found"
+            ]
+            let resultData = try JSONSerialization.data(withJSONObject: result)
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: String(data: resultData, encoding: .utf8) ?? "{}",
+                success: false
+            )
+        }
+
+        guard let personB = PeopleStore.shared.getPersonByName(args.person_b_name) else {
+            let result: [String: Any] = [
+                "success": false,
+                "message": "Person '\(args.person_b_name)' not found"
+            ]
+            let resultData = try JSONSerialization.data(withJSONObject: result)
+            return ToolResult(
+                toolCallId: toolCall.id,
+                result: String(data: resultData, encoding: .utf8) ?? "{}",
+                success: false
+            )
+        }
+
+        let connectionType = ConnectionType(rawValue: args.connection_type ?? "known") ?? .known
+        let success = PeopleStore.shared.addConnection(
+            personAId: personA.id,
+            personBId: personB.id,
+            context: args.context,
+            type: connectionType
+        )
+
+        let result: [String: Any] = [
+            "success": success,
+            "message": success ? "Connection created between '\(args.person_a_name)' and '\(args.person_b_name)'" : "Failed to create connection"
+        ]
+
+        let resultData = try JSONSerialization.data(withJSONObject: result)
+        return ToolResult(
+            toolCallId: toolCall.id,
+            result: String(data: resultData, encoding: .utf8) ?? "{}",
+            success: success
+        )
+    }
+
+    private func executeGetNetwork(_ toolCall: ToolCall) async throws -> ToolResult {
+        let args = parseArguments(toolCall.arguments, as: GetNetworkArgs.self)
+
+        var people = PeopleStore.shared.people
+
+        // Filter by tag if specified
+        if let filterTag = args?.filter_tag, !filterTag.isEmpty {
+            people = people.filter { $0.tags.contains(filterTag) }
+        }
+
+        let stats = PeopleStore.shared.getStats()
+
+        let peopleList = people.prefix(50).map { person -> [String: Any] in
+            var dict: [String: Any] = [
+                "id": person.id,
+                "name": person.name
+            ]
+            if !person.tags.isEmpty { dict["tags"] = person.tags }
+            if args?.include_connections == true {
+                dict["connections"] = person.connections.compactMap { conn -> [String: Any]? in
+                    guard let connectedPerson = conn.connectedPerson else { return nil }
+                    return [
+                        "person_name": connectedPerson.name,
+                        "type": conn.connectionType.rawValue,
+                        "context": conn.context ?? ""
+                    ]
+                }
+            }
+            return dict
+        }
+
+        let result: [String: Any] = [
+            "total_people": stats.peopleCount,
+            "total_connections": stats.connectionCount,
+            "total_organizations": stats.orgCount,
+            "total_tags": stats.tagCount,
+            "people": peopleList
+        ]
+
+        let resultData = try JSONSerialization.data(withJSONObject: result)
+        return ToolResult(
+            toolCallId: toolCall.id,
+            result: String(data: resultData, encoding: .utf8) ?? "{}",
+            success: true
+        )
+    }
+
     // MARK: - Helpers
 
     private func parseArguments<T: Decodable>(_ json: String, as type: T.Type) -> T? {
@@ -317,4 +568,29 @@ struct SendEmailArgs: Codable {
     let to: String
     let subject: String
     let body: String
+}
+
+// People/CRM Argument Types
+
+struct SearchPeopleArgs: Codable {
+    let query: String
+}
+
+struct AddPersonArgs: Codable {
+    let name: String
+    let email: String?
+    let one_liner: String?
+    let tags: [String]?
+}
+
+struct AddConnectionArgs: Codable {
+    let person_a_name: String
+    let person_b_name: String
+    let context: String?
+    let connection_type: String?
+}
+
+struct GetNetworkArgs: Codable {
+    let filter_tag: String?
+    let include_connections: Bool?
 }

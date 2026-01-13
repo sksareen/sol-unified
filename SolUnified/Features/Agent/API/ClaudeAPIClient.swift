@@ -299,6 +299,86 @@ class ClaudeAPIClient: ObservableObject {
                 ],
                 "required": ["category", "key", "value"]
             ]
+
+        // People/CRM Tools
+
+        case .searchPeople:
+            return [
+                "type": "object",
+                "properties": [
+                    "query": [
+                        "type": "string",
+                        "description": "Search query for name, company, tag, or notes"
+                    ]
+                ],
+                "required": ["query"]
+            ]
+
+        case .addPerson:
+            return [
+                "type": "object",
+                "properties": [
+                    "name": [
+                        "type": "string",
+                        "description": "Person's full name"
+                    ],
+                    "email": [
+                        "type": "string",
+                        "description": "Email address"
+                    ],
+                    "one_liner": [
+                        "type": "string",
+                        "description": "Brief description or role"
+                    ],
+                    "tags": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "description": "Tags/categories for this person"
+                    ]
+                ],
+                "required": ["name"]
+            ]
+
+        case .addConnection:
+            return [
+                "type": "object",
+                "properties": [
+                    "person_a_name": [
+                        "type": "string",
+                        "description": "First person's name"
+                    ],
+                    "person_b_name": [
+                        "type": "string",
+                        "description": "Second person's name"
+                    ],
+                    "context": [
+                        "type": "string",
+                        "description": "How they know each other"
+                    ],
+                    "connection_type": [
+                        "type": "string",
+                        "description": "Type of connection",
+                        "enum": ["known", "friend", "colleague", "family", "mentor", "introduced"]
+                    ]
+                ],
+                "required": ["person_a_name", "person_b_name"]
+            ]
+
+        case .getNetwork:
+            return [
+                "type": "object",
+                "properties": [
+                    "filter_tag": [
+                        "type": "string",
+                        "description": "Optional tag to filter people by"
+                    ],
+                    "include_connections": [
+                        "type": "boolean",
+                        "description": "Whether to include connection data for each person"
+                    ]
+                ],
+                "required": []
+            ]
         }
     }
 

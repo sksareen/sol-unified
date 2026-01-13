@@ -164,11 +164,18 @@ class ContextAPIServer: ObservableObject {
             self.requestCount += 1
         }
         
-        // Route request
+        // Route request based on method
+        if method == "POST" {
+            // Parse body from request
+            let bodyStartIndex = request.range(of: "\r\n\r\n")?.upperBound ?? request.startIndex
+            let body = String(request[bodyStartIndex...])
+            return handlePostRequest(path: path, body: body)
+        }
+
         guard method == "GET" else {
             return httpResponse(status: 405, body: ["error": "Method not allowed"])
         }
-        
+
         switch path {
         case "/", "/context":
             return handleContextRequest()
@@ -191,6 +198,18 @@ class ContextAPIServer: ObservableObject {
             return handleStatsRequest()
         case "/health":
             return handleHealthRequest()
+        case "/calendar/events":
+            let dateStr = query["date"] ?? ISO8601DateFormatter().string(from: Date())
+            return handleCalendarEventsRequest(date: dateStr)
+        case "/people/search":
+            guard let q = query["q"], !q.isEmpty else {
+                return httpResponse(status: 400, body: ["error": "Missing query parameter 'q'"])
+            }
+            let fuzzy = query["fuzzy"] != "false"
+            return handlePeopleSearchRequest(query: q, fuzzy: fuzzy)
+        case "/agent/actions":
+            let status = query["status"]
+            return handleGetActionsRequest(status: status)
         default:
             return httpResponse(status: 404, body: ["error": "Not found", "path": path])
         }
@@ -430,13 +449,265 @@ class ContextAPIServer: ObservableObject {
             "timestamp": dateFormatter.string(from: Date())
         ])
     }
-    
+
+    // MARK: - Calendar Events Handler
+
+    private func handleCalendarEventsRequest(date: String) -> String {
+        // Parse the date parameter
+        let targetDate: Date
+        if let parsed = ISO8601DateFormatter().date(from: date) {
+            targetDate = parsed
+        } else {
+            // Try simple date format
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            if let parsed = formatter.date(from: date) {
+                targetDate = parsed
+            } else {
+                targetDate = Date()
+            }
+        }
+
+        // Fetch events synchronously using semaphore (API server runs on background queue)
+        var events: [[String: Any]] = []
+        let semaphore = DispatchSemaphore(value: 0)
+
+        Task {
+            let calendarEvents = await CalendarStore.shared.getEvents(for: targetDate)
+            events = calendarEvents.map { event -> [String: Any] in
+                return [
+                    "id": event.id,
+                    "title": event.title,
+                    "start": self.dateFormatter.string(from: event.startDate),
+                    "end": self.dateFormatter.string(from: event.endDate),
+                    "location": event.location ?? "",
+                    "attendees": event.attendees,
+                    "calendar": event.calendarName,
+                    "is_all_day": event.isAllDay,
+                    "is_external": event.isExternal
+                ]
+            }
+            semaphore.signal()
+        }
+
+        _ = semaphore.wait(timeout: .now() + 5)
+
+        return httpResponse(status: 200, body: [
+            "date": date,
+            "events": events,
+            "count": events.count
+        ])
+    }
+
+    // MARK: - People Search Handler
+
+    private func handlePeopleSearchRequest(query: String, fuzzy: Bool) -> String {
+        let allPeople = PeopleStore.shared.people
+
+        // Filter people by name
+        let matches: [Person]
+        if fuzzy {
+            matches = allPeople.filter {
+                $0.name.localizedCaseInsensitiveContains(query)
+            }
+        } else {
+            matches = allPeople.filter {
+                $0.name.localizedCaseInsensitiveCompare(query) == .orderedSame
+            }
+        }
+
+        let people = matches.prefix(10).map { person -> [String: Any] in
+            var result: [String: Any] = [
+                "id": person.id,
+                "name": person.name
+            ]
+
+            if let oneLiner = person.oneLiner {
+                result["one_liner"] = oneLiner
+            }
+            if let notes = person.notes {
+                result["notes"] = truncate(notes, maxLength: 500) ?? ""
+            }
+            if let email = person.email {
+                result["email"] = email
+            }
+            if let linkedin = person.linkedin {
+                result["linkedin"] = linkedin
+            }
+            if let location = person.currentCity ?? person.location {
+                result["location"] = location
+            }
+            if !person.tags.isEmpty {
+                result["tags"] = person.tags
+            }
+            if !person.organizations.isEmpty {
+                result["organizations"] = person.organizations.compactMap { personOrg -> [String: Any]? in
+                    guard let org = personOrg.organization else { return nil }
+                    var orgData: [String: Any] = [
+                        "name": org.name
+                    ]
+                    if let role = personOrg.role {
+                        orgData["role"] = role
+                    }
+                    if personOrg.isCurrent {
+                        orgData["is_current"] = true
+                    }
+                    return orgData
+                }
+            }
+
+            return result
+        }
+
+        return httpResponse(status: 200, body: [
+            "query": query,
+            "found": !people.isEmpty,
+            "people": Array(people),
+            "count": people.count
+        ])
+    }
+
+    // MARK: - Agent Actions GET Handler
+
+    private func handleGetActionsRequest(status: String?) -> String {
+        // Use semaphore to safely access MainActor property
+        var actions: [[String: Any]] = []
+        var pendingCount = 0
+        let semaphore = DispatchSemaphore(value: 0)
+
+        DispatchQueue.main.async {
+            let allActions = AgentActionStore.shared.actions
+
+            let filtered: [AgentAction]
+            if let statusFilter = status {
+                if let targetStatus = AgentActionStatus(rawValue: statusFilter) {
+                    filtered = allActions.filter { $0.status == targetStatus }
+                } else {
+                    filtered = allActions
+                }
+            } else {
+                filtered = allActions
+            }
+
+            actions = filtered.prefix(50).map { action -> [String: Any] in
+                var result: [String: Any] = [
+                    "id": action.id,
+                    "type": action.type.rawValue,
+                    "title": action.title,
+                    "summary": action.summary,
+                    "status": action.status.rawValue,
+                    "created_at": self.dateFormatter.string(from: action.createdAt)
+                ]
+
+                if let details = action.details {
+                    result["details"] = details
+                }
+                if let draftContent = action.draftContent {
+                    result["draft_content"] = self.truncate(draftContent, maxLength: 1000) ?? ""
+                }
+                if let eventId = action.relatedEventId {
+                    result["related_event_id"] = eventId
+                }
+                if let eventTitle = action.relatedEventTitle {
+                    result["related_event_title"] = eventTitle
+                }
+                if let actionUrl = action.actionUrl {
+                    result["action_url"] = actionUrl
+                }
+                if let reviewedAt = action.reviewedAt {
+                    result["reviewed_at"] = self.dateFormatter.string(from: reviewedAt)
+                }
+
+                return result
+            }
+
+            pendingCount = allActions.filter { $0.status == .pending }.count
+            semaphore.signal()
+        }
+
+        _ = semaphore.wait(timeout: .now() + 5)
+
+        return httpResponse(status: 200, body: [
+            "actions": actions,
+            "count": actions.count,
+            "pending_count": pendingCount
+        ])
+    }
+
+    // MARK: - POST Request Handler
+
+    private func handlePostRequest(path: String, body: String) -> String {
+        switch path {
+        case "/agent/actions":
+            return handleCreateAction(body: body)
+        default:
+            return httpResponse(status: 404, body: ["error": "POST endpoint not found", "path": path])
+        }
+    }
+
+    private func handleCreateAction(body: String) -> String {
+        guard let data = body.data(using: .utf8) else {
+            return httpResponse(status: 400, body: ["error": "Invalid request body"])
+        }
+
+        // Expected JSON structure:
+        // {
+        //   "type": "meeting_brief" | "linkedin_draft" | "email_draft" | "research_summary" | "reminder" | "other",
+        //   "title": "Meeting with Acme Corp",
+        //   "summary": "Brief description",
+        //   "details": "Full details (optional)",
+        //   "related_event_id": "event-id (optional)",
+        //   "related_event_title": "Calendar event title (optional)",
+        //   "draft_content": "The actual draft message/brief (optional)",
+        //   "action_url": "URL to open when user clicks action (optional)"
+        // }
+
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return httpResponse(status: 400, body: ["error": "Invalid JSON"])
+            }
+
+            guard let typeStr = json["type"] as? String,
+                  let type = AgentActionType(rawValue: typeStr),
+                  let title = json["title"] as? String,
+                  let summary = json["summary"] as? String else {
+                return httpResponse(status: 400, body: ["error": "Missing required fields: type, title, summary"])
+            }
+
+            let action = AgentAction(
+                type: type,
+                title: title,
+                summary: summary,
+                details: json["details"] as? String,
+                relatedEventId: json["related_event_id"] as? String,
+                relatedEventTitle: json["related_event_title"] as? String,
+                draftContent: json["draft_content"] as? String,
+                actionUrl: json["action_url"] as? String
+            )
+
+            // Add to store (runs on main thread)
+            DispatchQueue.main.async {
+                AgentActionStore.shared.addAction(action)
+            }
+
+            return httpResponse(status: 201, body: [
+                "success": true,
+                "action_id": action.id,
+                "message": "Action created successfully"
+            ])
+
+        } catch {
+            return httpResponse(status: 400, body: ["error": "JSON parsing error: \(error.localizedDescription)"])
+        }
+    }
+
     // MARK: - Helpers
     
     private func httpResponse(status: Int, body: [String: Any]) -> String {
         let statusText: String
         switch status {
         case 200: statusText = "OK"
+        case 201: statusText = "Created"
         case 400: statusText = "Bad Request"
         case 404: statusText = "Not Found"
         case 405: statusText = "Method Not Allowed"

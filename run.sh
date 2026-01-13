@@ -6,8 +6,16 @@ cd "$(dirname "$0")"
 echo "🚀 Building and running Sol Unified..."
 echo ""
 
-swift run
+# Build the app bundle (required for proper macOS permissions)
+./build.sh
 
-# If you want to run in release mode for better performance:
-# swift run -c release
+# Run the app bundle
+echo ""
+echo "🚀 Launching Sol Unified..."
+open ".build/Sol Unified.app"
+
+# Follow logs
+echo "📋 Following logs (Ctrl+C to stop)..."
+sleep 2
+log stream --predicate 'subsystem == "com.solunified.app" OR process == "Sol Unified"' --level debug 2>/dev/null || echo "Log streaming not available, check Console.app for logs"
 
