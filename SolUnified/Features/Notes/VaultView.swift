@@ -25,7 +25,8 @@ struct VaultView: View {
                 vaultPath: settings.vaultRootDirectory,
                 selectedFile: $state.selectedFile
             )
-            
+            .id(settings.vaultRootDirectory) // Force recreation when path changes
+
             WYSIWYGMarkdownEditor(fileURL: $state.selectedFile)
         }
         .background(Color.brutalistBgPrimary)

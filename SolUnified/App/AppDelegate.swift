@@ -89,10 +89,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("🌐 Starting Context API server on http://localhost:7654")
             self.contextAPIServer.start(port: 7654)
 
-            // Start agent daemon if enabled
-            print("🤖 Checking agent daemon auto-start...")
-            AgentDaemonManager.shared.autoStartIfEnabled()
-
             // Cleanup old activity logs based on retention setting
             let retentionDays = AppSettings.shared.activityLogRetentionDays
             _ = Database.shared.cleanupOldActivityLogs(olderThan: retentionDays)
@@ -120,7 +116,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ActivityStore.shared.stopMonitoring()
         contextExporter.stopAutoExport()
         contextAPIServer.stop()
-        AgentDaemonManager.shared.stop()
         hotkeyManager.unregister()
     }
     

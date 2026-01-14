@@ -72,6 +72,7 @@ struct NotesView: View {
                             vaultPath: settings.vaultRootDirectory,
                             selectedFile: $selectedFile
                         )
+                        .id(settings.vaultRootDirectory) // Force recreation when path changes
 
                         WYSIWYGMarkdownEditor(fileURL: $selectedFile)
                     }

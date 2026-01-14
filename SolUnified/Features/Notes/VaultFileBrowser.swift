@@ -14,6 +14,7 @@ class VaultFilesStore: ObservableObject {
     @Published var hasLoaded = false
     @Published var expandedFolders: Set<String> = []
     @Published var isCollapsed: Bool = false
+    @Published var errorMessage: String?
 
     // Cache management
     private var cachedVaultPath: String?
@@ -21,6 +22,14 @@ class VaultFilesStore: ObservableObject {
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
 
     private init() {}
+
+    /// Check if the vault path is valid (exists and is a directory)
+    func isValidVaultPath(_ path: String) -> Bool {
+        guard !path.isEmpty else { return false }
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+        return exists && isDir.boolValue
+    }
 
     /// Check if cache is valid for the given vault path
     func isCacheValid(for vaultPath: String) -> Bool {
@@ -262,6 +271,21 @@ struct VaultFileBrowser: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.brutalistBgPrimary.opacity(0.8))
                 }
+
+                if let error = filesStore.errorMessage {
+                    VStack(spacing: 12) {
+                        Image(systemName: "folder.badge.questionmark")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+                        Text(error)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 16)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.brutalistBgPrimary)
+                }
             }
             .background(Color.brutalistBgPrimary)
                 }
@@ -357,6 +381,20 @@ struct VaultFileBrowser: View {
     }
     
     private func loadFiles(forceRefresh: Bool = false) {
+        // Validate vault path first
+        guard filesStore.isValidVaultPath(vaultPath) else {
+            print("📁 Invalid vault path: '\(vaultPath)'")
+            filesStore.errorMessage = vaultPath.isEmpty
+                ? "No vault folder selected. Go to Settings to choose one."
+                : "Vault folder not found: \(vaultPath)"
+            filesStore.files = []
+            filesStore.isLoading = false
+            return
+        }
+
+        // Clear any previous error
+        filesStore.errorMessage = nil
+
         // Use cache if valid and not forcing refresh
         if !forceRefresh && filesStore.isCacheValid(for: vaultPath) {
             print("📁 Using cached vault files for \(vaultPath)")
@@ -370,12 +408,13 @@ struct VaultFileBrowser: View {
         DispatchQueue.global(qos: .userInitiated).async {
             let fileManager = FileManager.default
             guard let enumerator = fileManager.enumerator(
-                at: URL(fileURLWithPath: vaultPath),
+                at: URL(fileURLWithPath: self.vaultPath),
                 includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
                 options: [.skipsHiddenFiles]
             ) else {
                 DispatchQueue.main.async {
                     self.filesStore.isLoading = false
+                    self.filesStore.errorMessage = "Could not read vault folder"
                 }
                 return
             }

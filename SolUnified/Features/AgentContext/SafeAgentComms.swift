@@ -73,8 +73,14 @@ struct MessageQueue: Codable {
 class SafeAgentComms {
     static let shared = SafeAgentComms()
     
-    private let queuePath = "/Users/savarsareen/coding/research/message_queue.json"
-    private let lockPath = "/Users/savarsareen/coding/research/.message_lock"
+    private var queuePath: String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsPath.appendingPathComponent("sol-context/message_queue.json").path
+    }
+    private var lockPath: String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsPath.appendingPathComponent("sol-context/.message_lock").path
+    }
     
     private init() {}
     
@@ -197,7 +203,8 @@ extension SafeAgentComms {
     }
     
     private func updateBridgeFromMessages(_ messages: [SafeMessage]) {
-        let bridgePath = "/Users/savarsareen/coding/research/agent_bridge.json"
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let bridgePath = documentsPath.appendingPathComponent("sol-context/agent_bridge.json").path
         
         guard let data = FileManager.default.contents(atPath: bridgePath),
               var bridge = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
