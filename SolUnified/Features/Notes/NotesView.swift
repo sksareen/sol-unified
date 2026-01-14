@@ -8,9 +8,10 @@
 import SwiftUI
 
 struct NotesView: View {
+    @ObservedObject private var settings = AppSettings.shared
     @State private var selectedMode: NotesMode = .scratchpad
     @State private var selectedFile: URL?
-    
+
     enum NotesMode: String, CaseIterable {
         case scratchpad = "SCRATCHPAD"
         case vault = "VAULT"
@@ -42,9 +43,10 @@ struct NotesView: View {
                                 }
                             )
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.plain)
+                    .focusable(false)
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal, 12)
@@ -67,10 +69,10 @@ struct NotesView: View {
                 case .vault:
                     HStack(spacing: 0) {
                         VaultFileBrowser(
-                            vaultPath: "/Users/savarsareen/coding/mable",
+                            vaultPath: settings.vaultRootDirectory,
                             selectedFile: $selectedFile
                         )
-                        
+
                         WYSIWYGMarkdownEditor(fileURL: $selectedFile)
                     }
                 }

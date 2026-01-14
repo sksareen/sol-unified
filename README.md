@@ -156,6 +156,11 @@ Tables:
 - `context_nodes` — Work contexts and sessions (deep work, creative, etc.)
 - `context_edges` — Relationships and transitions between contexts
 - `notes` — Scratchpad and vault content
+- `people` — Personal contacts with metadata
+- `organizations` — Companies, schools, and other orgs
+- `person_organizations` — Employment/education relationships
+- `person_connections` — Person-to-person relationship links
+- `person_tags` — Flexible tagging for contacts
 
 ### Agent Integration (Optional)
 
@@ -278,13 +283,17 @@ sol-unified/
 │   ├── App/                    # Entry point, window management
 │   ├── Core/                   # Database, hotkeys, window manager
 │   ├── Features/
+│   │   ├── Agent/              # AI agent with Claude integration
+│   │   ├── AgentContext/       # Context export for AI agents
+│   │   ├── Calendar/           # Calendar integration with EventKit
 │   │   ├── Clipboard/          # Clipboard monitoring
 │   │   ├── Screenshots/        # Screenshot organization
 │   │   ├── Activity/           # App/window tracking + Context graph
 │   │   ├── Notes/              # Vault and markdown editor
 │   │   ├── Terminal/           # SwiftTerm integration
 │   │   ├── Tasks/              # Task management
-│   │   └── Context/            # Unified context viewer (clipboard, screenshots, activity)
+│   │   ├── People/             # Personal CRM with network graph
+│   │   └── Context/            # Unified context viewer
 │   └── Shared/                 # Design system, models, settings
 ├── Package.swift
 └── run.sh
@@ -319,6 +328,16 @@ sol-unified/
 swift --version  # Need 5.9+
 swift build
 ```
+
+### People tab showing empty?
+- People are stored locally in `sol.db`
+- Use the + button to add contacts manually
+- Import from Obsidian via Settings if you have an existing CRM database
+
+### Agent not responding?
+- Ensure you have a valid Claude API key in Settings
+- Check your internet connection
+- Review the error message in the chat
 
 ---
 

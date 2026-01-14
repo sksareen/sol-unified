@@ -58,9 +58,9 @@ struct ChatMessageView: View {
                     .cornerRadius(14)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    // Main content
+                    // Main content with markdown rendering
                     if !message.content.isEmpty {
-                        Text(message.content)
+                        Text(markdownAttributedString(message.content))
                             .font(.system(size: 14))
                             .foregroundColor(Color.brutalistTextPrimary)
                             .textSelection(.enabled)
@@ -207,6 +207,18 @@ struct ChatMessageView: View {
         }
 
         return nil
+    }
+
+    /// Convert markdown string to AttributedString for rendering
+    private func markdownAttributedString(_ text: String) -> AttributedString {
+        do {
+            var options = AttributedString.MarkdownParsingOptions()
+            options.interpretedSyntax = .inlineOnlyPreservingWhitespace
+            return try AttributedString(markdown: text, options: options)
+        } catch {
+            // Fallback to plain text if markdown parsing fails
+            return AttributedString(text)
+        }
     }
 }
 

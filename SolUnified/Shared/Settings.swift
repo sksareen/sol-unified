@@ -676,22 +676,6 @@ struct SettingsView: View {
                 
                 if settings.activityLoggingEnabled {
                     Divider()
-                    
-                    // Data Retention
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Data Retention")
-                            .font(.system(size: 13, weight: .semibold))
-                        
-                        Picker("Keep logs for:", selection: $settings.activityLogRetentionDays) {
-                            Text("30 days").tag(30)
-                            Text("90 days").tag(90)
-                            Text("1 year").tag(365)
-                        }
-                        .pickerStyle(RadioGroupPickerStyle())
-                    }
-                    .padding(.vertical, 8)
-                    
-                    Divider()
 
                     // Neural Context (Screen Capture)
                     VStack(alignment: .leading, spacing: 8) {

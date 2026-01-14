@@ -9,15 +9,11 @@ import SwiftUI
 
 struct PeopleView: View {
     @StateObject private var store = PeopleStore.shared
-    @AppStorage("peopleViewMode") private var viewMode: String = "list"
+    @State private var viewMode: PeopleViewMode = .list
     @State private var searchQuery = ""
     @State private var selectedPerson: Person?
     @State private var showAddPerson = false
     @State private var personToEdit: Person?
-
-    private var currentViewMode: PeopleViewMode {
-        PeopleViewMode(rawValue: viewMode) ?? .list
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,7 +22,7 @@ struct PeopleView: View {
 
             // Content
             Group {
-                switch currentViewMode {
+                switch viewMode {
                 case .list:
                     PeopleListView(
                         people: filteredPeople,
@@ -92,18 +88,28 @@ struct PeopleView: View {
                 // View toggle
                 HStack(spacing: 0) {
                     ForEach(PeopleViewMode.allCases, id: \.self) { mode in
-                        Button(action: { viewMode = mode.rawValue }) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                viewMode = mode
+                            }
+                        } label: {
                             Image(systemName: mode.icon)
                                 .font(.system(size: 12))
-                                .foregroundColor(currentViewMode == mode ? .brutalistTextPrimary : .brutalistTextMuted)
+                                .foregroundColor(viewMode == mode ? .brutalistTextPrimary : .brutalistTextMuted)
                                 .frame(width: 32, height: 28)
-                                .background(currentViewMode == mode ? Color.brutalistBgTertiary : Color.clear)
+                                .background(viewMode == mode ? Color.brutalistBgTertiary : Color.clear)
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .buttonStyle(.plain)
+                        .focusable(false)
                     }
                 }
                 .background(Color.brutalistBgSecondary)
                 .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.brutalistBorder, lineWidth: 1)
+                )
 
                 // Add button
                 Button(action: { showAddPerson = true }) {

@@ -14,14 +14,41 @@ class VaultFilesStore: ObservableObject {
     @Published var hasLoaded = false
     @Published var expandedFolders: Set<String> = []
     @Published var isCollapsed: Bool = false
-    
+
+    // Cache management
+    private var cachedVaultPath: String?
+    private var cacheTime: Date?
+    private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
     private init() {}
+
+    /// Check if cache is valid for the given vault path
+    func isCacheValid(for vaultPath: String) -> Bool {
+        guard cachedVaultPath == vaultPath,
+              let cacheTime = cacheTime,
+              !files.isEmpty else {
+            return false
+        }
+        return Date().timeIntervalSince(cacheTime) < cacheExpirationSeconds
+    }
+
+    /// Update cache metadata after loading
+    func updateCache(for vaultPath: String) {
+        cachedVaultPath = vaultPath
+        cacheTime = Date()
+    }
+
+    /// Invalidate the cache to force a reload
+    func invalidateCache() {
+        cachedVaultPath = nil
+        cacheTime = nil
+    }
 }
 
 struct VaultFileBrowser: View {
     let vaultPath: String
     @Binding var selectedFile: URL?
-    @StateObject private var filesStore = VaultFilesStore.shared
+    @ObservedObject private var filesStore = VaultFilesStore.shared
     @ObservedObject private var settings = AppSettings.shared
     @State private var searchQuery: String = ""
     @State private var showNewFilePopover: Bool = false
@@ -64,7 +91,19 @@ struct VaultFileBrowser: View {
                         .help("Open today's note (⌘T)")
                         
                         Spacer()
-                        
+
+                        // Refresh button
+                        Button(action: {
+                            filesStore.invalidateCache()
+                            loadFiles(forceRefresh: true)
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.brutalistTextSecondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Refresh files")
+
                         // New File button
                         Button(action: {
                             showNewFilePopover = true
@@ -261,10 +300,13 @@ struct VaultFileBrowser: View {
             alignment: .trailing
         )
         .onAppear {
-            loadFiles()
+            print("📁 VaultFileBrowser onAppear - vaultPath: \(vaultPath)")
+            print("📁 Cache valid: \(filesStore.isCacheValid(for: vaultPath)), files count: \(filesStore.files.count)")
+            loadFiles()  // Uses cache if available
         }
-        .onChange(of: vaultPath) { _ in
-            loadFiles()
+        .onChange(of: vaultPath) { newPath in
+            filesStore.invalidateCache()  // Path changed, invalidate cache
+            loadFiles(forceRefresh: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("FocusVaultSearch"))) { _ in
             isSearchFocused = true
@@ -275,7 +317,8 @@ struct VaultFileBrowser: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshVaultFiles"))) { _ in
-            loadFiles()
+            filesStore.invalidateCache()
+            loadFiles(forceRefresh: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenTodaysNote"))) { _ in
             openTodaysNote()
@@ -313,11 +356,17 @@ struct VaultFileBrowser: View {
         }
     }
     
-    private func loadFiles() {
+    private func loadFiles(forceRefresh: Bool = false) {
+        // Use cache if valid and not forcing refresh
+        if !forceRefresh && filesStore.isCacheValid(for: vaultPath) {
+            print("📁 Using cached vault files for \(vaultPath)")
+            return
+        }
+
         filesStore.isLoading = true
         filesStore.hasLoaded = true
-        filesStore.files = [] // Clear existing files while loading
-        
+        // Don't clear files - keep showing old content while loading
+
         DispatchQueue.global(qos: .userInitiated).async {
             let fileManager = FileManager.default
             guard let enumerator = fileManager.enumerator(
@@ -335,7 +384,13 @@ struct VaultFileBrowser: View {
             var journalFiles: [MarkdownFile] = []
             
             // Directories to exclude for performance
-            let excludedDirs = ["node_modules", ".git", ".obsidian", ".trash", "Library", "Applications", "System", "bin", "sbin", "usr", "DerivedData", "build"]
+            let excludedDirs = [
+                "node_modules", ".git", ".obsidian", ".trash", ".build", ".swiftpm",
+                "Library", "Applications", "System", "bin", "sbin", "usr",
+                "DerivedData", "build", "Pods", "Carthage", "xcuserdata",
+                "dist", "target", "vendor", "__pycache__", ".venv", "venv",
+                ".next", ".nuxt", ".output", "coverage", ".nyc_output"
+            ]
             
             for case let fileURL as URL in enumerator {
                 let path = fileURL.path
@@ -375,7 +430,9 @@ struct VaultFileBrowser: View {
             DispatchQueue.main.async {
                 self.filesStore.files = sortedFiles
                 self.filesStore.isLoading = false
-                
+                self.filesStore.updateCache(for: self.vaultPath)
+                print("📁 Loaded \(sortedFiles.count) files from \(self.vaultPath)")
+
                 // Default to latest daily note
                 if self.selectedFile == nil, let latestJournal = journalFiles.sorted(by: { $0.name > $1.name }).first {
                     self.selectedFile = latestJournal.url

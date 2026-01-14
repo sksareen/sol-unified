@@ -128,9 +128,10 @@ struct TabNavigator: View {
                         .foregroundColor(terminalPanelState.isVisible ? Color.brutalistAccent : Color.brutalistTextSecondary.opacity(0.7))
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
+                .focusable(false)
                 .help("Toggle Terminal (⌘J)")
-                
+
                 // Settings Button
                 Button(action: {
                     settings.showSettings = true
@@ -140,7 +141,8 @@ struct TabNavigator: View {
                         .foregroundColor(Color.brutalistTextSecondary.opacity(0.7))
                         .frame(width: 32, height: 32)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
+                .focusable(false)
                 .help("Settings")
                 .keyboardShortcut(",", modifiers: .command)
                 .disabled(settings.showSettings)
@@ -470,18 +472,19 @@ struct TabButton: View {
         }) {
             VStack(spacing: 0) {
                 Spacer()
-                
+
                 Text(title)
                     .font(.system(size: 15, weight: isSelected ? .bold : .medium))
                     .foregroundColor(isSelected ? Color.primary : Color.secondary.opacity(0.6))
                     .padding(.bottom, 10)
-                
+
                 Rectangle()
                     .fill(isSelected ? Color.accentColor : Color.clear)
                     .frame(height: 2)
             }
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
+        .focusable(false)
         .frame(maxWidth: .infinity)
         .frame(height: 44)
         .contentShape(Rectangle())
