@@ -7,21 +7,18 @@ let package = Package(
     products: [
         .executable(name: "SolUnified", targets: ["SolUnified"])
     ],
-    dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.0.0")
-    ],
+    dependencies: [],
     targets: [
         .executableTarget(
             name: "SolUnified",
-            dependencies: [
-                .product(name: "SwiftTerm", package: "SwiftTerm")
-            ],
+            dependencies: [],
             path: "SolUnified",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("Cocoa"),
                 .linkedFramework("Carbon"),
                 .linkedFramework("SwiftUI"),
+                .linkedFramework("Vision"),
                 .linkedLibrary("sqlite3")
             ]
         )

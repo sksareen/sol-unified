@@ -1,102 +1,107 @@
-# Sol Unified
+# Sol Unified v2.0
 
-A native macOS app for unified personal context—clipboard, screenshots, activity tracking, notes, and terminal in one place.
+**"The Prosthetic for Executive Function"**
 
-## 🤖 AI Agent Context Access
+A native macOS orchestration layer that bridges the gap between human intent and AI execution. Sol v2 solves the "Context Leaking" problem by automating state management and gently correcting focus drift.
 
-### Quick Start (For Any Claude Code Instance)
+## Core Features
 
-Run this command to understand what I'm currently working on:
+### 1. The HUD (Opt + P)
+A minimalist, dark-mode input bar for setting your current **Objective**.
+- Type your intent (e.g., "Fix the Auth Bug")
+- Sets the global "Current Objective" that guides all other features
+- Shows current objective and session duration
+
+### 2. The Context Engine (Opt + C)
+One-button context capture for AI injection.
+- Aggregates: Active window, selected text, OCR'd screenshots, clipboard history, current objective
+- Outputs: Formatted Markdown optimized for LLM context windows
+- Copies directly to clipboard for pasting into Claude/GPT
+
+### 3. The Drift Monitor
+Passive monitor that gently nudges you back on task.
+- Detects when you switch to distraction apps (Twitter, Reddit, etc.)
+- After 30 seconds: Screen dims with glowing text: *"We were working on [Objective]. Resume?"*
+- Press **Enter** to return to work, **Esc** to take a break
+
+### 4. Infinite Memory (Background)
+Silent recording for the Context Engine:
+- Clipboard history with source app tracking
+- Screenshot monitoring with provenance
+- Activity/app usage logging
+
+## HTTP API (Port 7654)
+
+When Sol is running, query context programmatically:
 
 ```bash
-sol-context
+curl http://localhost:7654/context      # Current context + objective
+curl http://localhost:7654/clipboard    # Recent clipboard
+curl http://localhost:7654/activity     # App usage
+curl http://localhost:7654/objective    # Current objective
+curl http://localhost:7654/stats        # Today's stats
 ```
-
-This gives you my current work session, recent clipboard, and activity summary.
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `sol-context` | Quick summary of current context |
-| `sol-context full` | Full JSON context (all data) |
-| `sol-context clipboard 10` | Last 10 clipboard items |
-| `sol-context clipboard 5 Cursor` | Last 5 clips from Cursor |
-| `sol-context activity 4` | Activity from last 4 hours |
-| `sol-context contexts 24` | Work sessions from last 24h |
-| `sol-context search "README"` | Search across all context |
-| `sol-context stats` | Today's productivity stats |
-
-### HTTP API (Real-Time Access)
-
-When Sol Unified is running, you can also query the API:
-
-```bash
-curl -s http://localhost:7654/context        # Current context
-curl -s http://localhost:7654/clipboard      # Recent clipboard
-curl -s http://localhost:7654/activity       # Recent activity
-curl -s http://localhost:7654/search?q=TERM  # Search
-curl -s http://localhost:7654/stats          # Today's stats
-```
-
-### What You Get
-
-- **Active Context**: Current work session type (deep work, creative, communication, etc.)
-- **Focus Score**: How focused I am (fewer app switches = higher focus)
-- **Recent Clipboard**: What I've copied, with source app and window title
-- **Activity Timeline**: App usage patterns
-- **Context Transitions**: How I've moved between work modes
-
-### When to Check Context
-
-- Before answering coding questions (understand what I'm working on)
-- When I reference "that thing" or assume you know context
-- When helping with debugging (see what I've copied recently)
-- When planning tasks (understand my work patterns)
-
----
-
-## File Export (Alternative)
-
-If the CLI isn't available, read these files directly:
-- **Full context**: `~/Documents/sol-context/context.json`
-- **Quick summary**: `~/Documents/sol-context/context-compact.md`
-
-Updated every 30 seconds while Sol Unified is running.
 
 ## Project Structure
 
 ```
 SolUnified/
-├── App/                    # Entry point, AppDelegate
-├── Core/                   # Database, hotkeys, window management
+├── App/
+│   ├── AppDelegate.swift          # Lifecycle, hotkeys, menu bar
+│   └── SolUnifiedApp.swift        # SwiftUI entry
+├── Core/
+│   ├── Database.swift             # SQLite
+│   ├── HotkeyManager.swift        # Global hotkeys (Opt+P, Opt+C)
+│   └── WindowManager.swift        # Settings panel
 ├── Features/
-│   ├── Activity/           # App tracking, context graph, focus detection
-│   ├── AgentContext/       # Context export for AI agents
-│   ├── Clipboard/          # Clipboard monitoring with source tracking
-│   ├── Screenshots/        # Screenshot capture with metadata
-│   ├── Notes/              # Vault and markdown editor
-│   ├── Terminal/           # Embedded SwiftTerm
-│   └── Tasks/              # Task management
-└── Shared/                 # Design system, models, settings
+│   ├── Focus/
+│   │   ├── ObjectiveStore.swift   # Current objective state
+│   │   ├── HUDView.swift          # Opt+P input bar
+│   │   ├── ContextEngine.swift    # Opt+C aggregation
+│   │   └── DriftMonitor.swift     # Distraction detection + overlay
+│   ├── Activity/                  # App monitoring, context graph
+│   ├── AgentContext/              # API server, context export
+│   ├── Clipboard/                 # Clipboard monitoring
+│   └── Screenshots/               # Screenshot capture
+└── Shared/
+    ├── BrutalistStyles.swift      # UI theming
+    ├── Models.swift               # Data models
+    ├── Settings.swift             # Preferences
+    └── TabNavigator.swift         # Settings panel UI
 ```
-
-## Key Files
-
-- `SolUnified/Features/Activity/ContextGraph.swift` - Context detection and tracking
-- `SolUnified/Features/AgentContext/ContextExporter.swift` - AI context export
-- `SolUnified/Core/Database.swift` - SQLite database wrapper
 
 ## Build & Run
 
 ```bash
+./build.sh        # Build .app bundle
 ./run.sh          # Build and run
-./package.sh      # Create DMG for distribution
-swift build       # Build only
+./package.sh      # Create DMG
 ```
 
-## Database Location
+## Database
 
-`~/Library/Application Support/SolUnified/sol.db`
+Location: `~/Library/Application Support/SolUnified/sol.db`
 
-Key tables: `context_nodes`, `context_edges`, `clipboard_history`, `screenshots`, `activity_log`
+Key tables:
+- `objectives` - Work session objectives
+- `clipboard_history` - Clipboard with source metadata
+- `screenshots` - Screenshot metadata
+- `activity_log` - App/window events
+- `context_nodes` - Work context sessions
+
+## What Was Cut in v2
+
+Removed to focus on core value:
+- Terminal emulator (use iTerm/Ghostty)
+- Notes/Vault (use Obsidian/Notion)
+- People CRM
+- Analytics dashboard
+- Agent chat UI
+
+The app is now invisible until summoned. Background services feed the Context Engine.
+
+## Philosophy
+
+- **Subtraction > Addition**: Integrate, don't duplicate
+- **Invisible UI**: Only visible when summoned or correcting
+- **Context is King**: Value is in continuity of data passed to AI

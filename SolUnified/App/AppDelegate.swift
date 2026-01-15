@@ -1,124 +1,231 @@
 //
 //  AppDelegate.swift
-//  SolUnified
+//  SolUnified v2.0
 //
-//  App delegate for window and system event management
+//  "The Prosthetic for Executive Function"
+//
+//  App delegate for the invisible background service.
+//  Sol v2 is menu-bar only with global hotkeys:
+//  - Opt+P: Toggle HUD (set objective)
+//  - Opt+C: Capture context to clipboard
 //
 
 import Cocoa
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    // Core managers
     var windowManager: WindowManager?
     var hotkeyManager = HotkeyManager.shared
-    var memoryTracker = MemoryTracker.shared
+
+    // v2 Features
+    var objectiveStore = ObjectiveStore.shared
+    var contextEngine = ContextEngine.shared
+    var driftMonitor = DriftMonitor.shared
+
+    // Background services
     var contextExporter = ContextExporter.shared
     var contextAPIServer = ContextAPIServer.shared
+
+    // Menu bar
     var statusItem: NSStatusItem?
-    
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide dock icon (app is menu bar only with hotkey)
+        // Hide dock icon (pure menu bar app)
         NSApp.setActivationPolicy(.accessory)
-        
+
         // Create menu bar icon
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "Sol-Unified")
-            button.action = #selector(toggleWindow)
-            button.target = self
-        }
-        
-        // Create menu for status item
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show/Hide (⌥`)", action: #selector(toggleWindow), keyEquivalent: ""))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        statusItem?.menu = menu
-        
+        setupMenuBar()
+
         // Initialize database
         if !Database.shared.initialize() {
             print("Failed to initialize database")
         }
-        
-        // Initialize activity store
-        let activityStore = ActivityStore.shared
-        
-        // Create main content view
+
+        // Ensure objectives table exists
+        createObjectivesTable()
+
+        // Create main settings panel (accessed via menu bar)
         let contentView = TabNavigator()
             .environmentObject(WindowManager.shared)
-        
-        // Setup window manager
+            .preferredColorScheme(AppSettings.shared.isDarkMode ? .dark : .light)
+
+        // Setup window manager for settings panel
         windowManager = WindowManager.shared
         windowManager?.setup(with: contentView)
-        
-        // Register global hotkey
-        let registered = hotkeyManager.register {
-            DispatchQueue.main.async {
-                WindowManager.shared.toggleWindow()
+
+        // Register global hotkeys
+        let registered = hotkeyManager.registerAll(
+            onHUD: {
+                HUDWindowController.shared.toggle()
+            },
+            onContext: {
+                ContextEngine.shared.captureAndCopy()
             }
-        }
-        
+        )
+
         if !registered {
-            print("Failed to register hotkey")
+            print("Failed to register hotkeys")
         }
-        
-        // Removed Tab key cycling - using individual tab shortcuts instead
-        
-        // Start monitoring after a small delay to ensure app is ready
+
+        // Start background services
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Clipboard monitoring (for context engine)
             ClipboardMonitor.shared.startMonitoring()
-            
-            // Start screenshot auto-monitoring
+
+            // Screenshot monitoring (for context engine)
             let screenshotsDir = AppSettings.shared.screenshotsDirectory
             ScreenshotScanner.shared.startMonitoring(directory: screenshotsDir)
-            
-            // Start activity monitoring if enabled
-            if AppSettings.shared.activityLoggingEnabled {
-                activityStore.startMonitoring()
-            }
-            
-            // Start memory tracking for agent intelligence
-            print("🧠 Starting memory tracking for agent bridge")
-            self.memoryTracker.updateContextFile() // Initial update
 
-            // Start context export for AI agent consumption
-            print("📤 Starting context export to ~/Documents/sol-context/")
+            // Activity monitoring (for drift detection and context)
+            if AppSettings.shared.activityLoggingEnabled {
+                ActivityStore.shared.startMonitoring()
+            }
+
+            // Start drift monitor
+            self.driftMonitor.startMonitoring()
+
+            // Context export for external AI agents
             self.contextExporter.startAutoExport(interval: 30.0)
 
-            // Start HTTP API server for real-time context access
-            print("🌐 Starting Context API server on http://localhost:7654")
+            // HTTP API server for real-time context access
             self.contextAPIServer.start(port: 7654)
 
-            // Cleanup old activity logs based on retention setting
+            // Cleanup old logs
             let retentionDays = AppSettings.shared.activityLogRetentionDays
             _ = Database.shared.cleanupOldActivityLogs(olderThan: retentionDays)
-            
-            // Open today's daily note on startup if enabled
-            if AppSettings.shared.openDailyNoteOnStartup {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    NotificationCenter.default.post(name: NSNotification.Name("OpenTodaysNote"), object: nil)
-                }
-            }
         }
-        
-        print("Sol Unified started successfully")
-        print("Press Option+` to show/hide the window")
+
+        print("Sol Unified v2.0 started")
+        print("Hotkeys:")
+        print("  Opt+P: Set Objective (HUD)")
+        print("  Opt+C: Capture Context")
     }
-    
-    @objc func toggleWindow() {
+
+    // MARK: - Menu Bar
+
+    private func setupMenuBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+
+        if let button = statusItem?.button {
+            // Use a sun icon (Sol = Sun)
+            button.image = NSImage(systemSymbolName: "sun.max.fill", accessibilityDescription: "Sol Unified")
+            button.action = #selector(toggleSettingsPanel)
+            button.target = self
+
+            // Update appearance based on objective state
+            updateMenuBarIcon()
+        }
+
+        // Create context menu
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Set Objective (⌥P)", action: #selector(showHUD), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Capture Context (⌘⇧C)", action: #selector(captureContext), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+
+        // Current objective (if any)
+        if let objective = objectiveStore.currentObjective {
+            let objectiveItem = NSMenuItem(title: "📍 \(objective.text)", action: nil, keyEquivalent: "")
+            objectiveItem.isEnabled = false
+            menu.addItem(objectiveItem)
+
+            menu.addItem(NSMenuItem(title: "Complete Objective", action: #selector(completeObjective), keyEquivalent: ""))
+            menu.addItem(NSMenuItem(title: "Clear Objective", action: #selector(clearObjective), keyEquivalent: ""))
+            menu.addItem(NSMenuItem.separator())
+        }
+
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(toggleSettingsPanel), keyEquivalent: ","))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit Sol", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        statusItem?.menu = menu
+
+        // Observe objective changes to update menu
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(objectiveDidChange),
+            name: NSNotification.Name("ObjectiveDidChange"),
+            object: nil
+        )
+    }
+
+    private func updateMenuBarIcon() {
+        guard let button = statusItem?.button else { return }
+
+        if let objective = objectiveStore.currentObjective {
+            // Show active state
+            button.image = NSImage(systemSymbolName: objective.isPaused ? "sun.max" : "sun.max.fill",
+                                   accessibilityDescription: "Sol Unified")
+            button.contentTintColor = objective.isPaused ? .orange : .systemGreen
+        } else {
+            // Idle state
+            button.image = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "Sol Unified")
+            button.contentTintColor = nil
+        }
+    }
+
+    @objc private func objectiveDidChange() {
+        setupMenuBar() // Rebuild menu
+        updateMenuBarIcon()
+    }
+
+    // MARK: - Actions
+
+    @objc func toggleSettingsPanel() {
         WindowManager.shared.toggleWindow()
     }
-    
+
+    @objc func showHUD() {
+        HUDWindowController.shared.show()
+    }
+
+    @objc func captureContext() {
+        ContextEngine.shared.captureAndCopy()
+    }
+
+    @objc func completeObjective() {
+        objectiveStore.completeObjective()
+    }
+
+    @objc func clearObjective() {
+        objectiveStore.abandonObjective()
+    }
+
+    // MARK: - Database Setup
+
+    private func createObjectivesTable() {
+        Database.shared.execute("""
+            CREATE TABLE IF NOT EXISTS objectives (
+                id TEXT PRIMARY KEY,
+                text TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT,
+                end_reason TEXT,
+                is_paused INTEGER DEFAULT 0,
+                total_paused_time REAL DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        // Index for querying active objectives
+        Database.shared.execute("""
+            CREATE INDEX IF NOT EXISTS idx_objectives_active ON objectives(end_time)
+        """)
+    }
+
+    // MARK: - Lifecycle
+
     func applicationWillTerminate(_ notification: Notification) {
         // Cleanup
         ClipboardMonitor.shared.stopMonitoring()
         ScreenshotScanner.shared.stopMonitoring()
         ActivityStore.shared.stopMonitoring()
+        driftMonitor.stopMonitoring()
         contextExporter.stopAutoExport()
         contextAPIServer.stop()
-        hotkeyManager.unregister()
+        hotkeyManager.unregisterAll()
     }
-    
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
             WindowManager.shared.showWindow(animated: true)
@@ -126,4 +233,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 }
-

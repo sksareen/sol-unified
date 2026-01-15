@@ -1,8 +1,8 @@
 //
 //  Settings.swift
-//  SolUnified
+//  SolUnified v2.0
 //
-//  App settings and preferences
+//  Simplified settings for the focused v2 architecture
 //
 
 import Foundation
@@ -12,80 +12,61 @@ import EventKit
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
-    
+
+    // MARK: - Window Settings
+
     @Published var windowWidthPercent: CGFloat {
         didSet {
             UserDefaults.standard.set(windowWidthPercent, forKey: "windowWidthPercent")
-            InternalAppTracker.shared.trackSettingChange(key: "windowWidthPercent", value: "\(Int(windowWidthPercent))")
         }
     }
-    
+
     @Published var windowHeightPercent: CGFloat {
         didSet {
             UserDefaults.standard.set(windowHeightPercent, forKey: "windowHeightPercent")
-            InternalAppTracker.shared.trackSettingChange(key: "windowHeightPercent", value: "\(Int(windowHeightPercent))")
         }
     }
-    
-    @Published var globalFontSize: CGFloat {
-        didSet {
-            UserDefaults.standard.set(globalFontSize, forKey: "globalFontSize")
-            InternalAppTracker.shared.trackSettingChange(key: "globalFontSize", value: "\(Int(globalFontSize))")
-            // Post notification for views to update
-            NotificationCenter.default.post(name: NSNotification.Name("GlobalFontSizeChanged"), object: nil)
-        }
-    }
-    
-    func increaseFontSize() {
-        globalFontSize = min(globalFontSize + 1, 24)
-    }
-    
-    func decreaseFontSize() {
-        globalFontSize = max(globalFontSize - 1, 10)
-    }
-    
-    func increaseWindowSize() {
-        windowWidthPercent = min(windowWidthPercent + 5, 100)
-        windowHeightPercent = min(windowHeightPercent + 5, 96)
-    }
-    
-    func decreaseWindowSize() {
-        windowWidthPercent = max(windowWidthPercent - 5, 35)
-        windowHeightPercent = max(windowHeightPercent - 5, 50)
-    }
-    
-    // Computed properties for actual pixel values
+
     var windowWidth: CGFloat {
-        guard let screen = NSScreen.main else { return 800 }
+        guard let screen = NSScreen.main else { return 320 }
         return screen.frame.width * (windowWidthPercent / 100.0)
     }
-    
+
     var windowHeight: CGFloat {
-        guard let screen = NSScreen.main else { return 600 }
+        guard let screen = NSScreen.main else { return 400 }
         return screen.frame.height * (windowHeightPercent / 100.0)
     }
-    
+
+    // MARK: - Appearance
+
     @Published var isDarkMode: Bool {
         didSet {
             UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
-            InternalAppTracker.shared.trackSettingChange(key: "isDarkMode", value: isDarkMode ? "true" : "false")
         }
     }
-    
+
+    @Published var globalFontSize: CGFloat {
+        didSet {
+            UserDefaults.standard.set(globalFontSize, forKey: "globalFontSize")
+        }
+    }
+
+    func increaseFontSize() {
+        globalFontSize = min(globalFontSize + 1, 24)
+    }
+
+    func decreaseFontSize() {
+        globalFontSize = max(globalFontSize - 1, 10)
+    }
+
+    // MARK: - Background Services
+
     @Published var screenshotsDirectory: String {
         didSet {
             UserDefaults.standard.set(screenshotsDirectory, forKey: "screenshotsDirectory")
-            InternalAppTracker.shared.trackSettingChange(key: "screenshotsDirectory", value: screenshotsDirectory)
         }
     }
-    
-    @Published var vaultRootDirectory: String {
-        didSet {
-            UserDefaults.standard.set(vaultRootDirectory, forKey: "vaultRootDirectory")
-            InternalAppTracker.shared.trackSettingChange(key: "vaultRootDirectory", value: vaultRootDirectory)
-        }
-    }
-    
+
     @Published var activityLoggingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(activityLoggingEnabled, forKey: "activityLoggingEnabled")
@@ -93,881 +74,263 @@ class AppSettings: ObservableObject {
                 ActivityStore.shared.startMonitoring()
             } else {
                 ActivityStore.shared.stopMonitoring()
-                // Also disable input monitoring when activity logging is disabled
-                InputMonitor.shared.stopMonitoring()
-                InputMonitor.shared.stopMouseTracking()
             }
         }
     }
-    
+
     @Published var activityLogRetentionDays: Int {
         didSet {
             UserDefaults.standard.set(activityLogRetentionDays, forKey: "activityLogRetentionDays")
-            InternalAppTracker.shared.trackSettingChange(key: "activityLogRetentionDays", value: "\(activityLogRetentionDays)")
         }
     }
-    
-    @Published var keyboardTrackingEnabled: Bool {
+
+    // MARK: - Drift Monitor Settings
+
+    @Published var driftMonitorEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(keyboardTrackingEnabled, forKey: "keyboardTrackingEnabled")
-            InternalAppTracker.shared.trackSettingChange(key: "keyboardTrackingEnabled", value: keyboardTrackingEnabled ? "true" : "false")
-            if !keyboardTrackingEnabled {
-                InputMonitor.shared.stopMonitoring()
-            } else if activityLoggingEnabled {
-                InputMonitor.shared.startMonitoring()
-            }
-        }
-    }
-    
-    @Published var mouseTrackingEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(mouseTrackingEnabled, forKey: "mouseTrackingEnabled")
-            InternalAppTracker.shared.trackSettingChange(key: "mouseTrackingEnabled", value: mouseTrackingEnabled ? "true" : "false")
-            if !mouseTrackingEnabled {
-                InputMonitor.shared.stopMouseTracking()
-            } else if activityLoggingEnabled {
-                InputMonitor.shared.startMouseTracking()
+            UserDefaults.standard.set(driftMonitorEnabled, forKey: "driftMonitorEnabled")
+            if driftMonitorEnabled {
+                DriftMonitor.shared.startMonitoring()
+            } else {
+                DriftMonitor.shared.stopMonitoring()
             }
         }
     }
 
-    /// Neural Context uses screen capture to analyze what you're actually doing
-    /// (e.g., distinguishing "reading docs" from "watching YouTube" in Chrome)
-    /// Requires Screen Recording permission. Off by default.
-    @Published var neuralContextEnabled: Bool {
+    @Published var driftThresholdSeconds: Int {
         didSet {
-            UserDefaults.standard.set(neuralContextEnabled, forKey: "neuralContextEnabled")
-            InternalAppTracker.shared.trackSettingChange(key: "neuralContextEnabled", value: neuralContextEnabled ? "true" : "false")
+            UserDefaults.standard.set(driftThresholdSeconds, forKey: "driftThresholdSeconds")
         }
     }
 
-    // Daily Notes settings
-    @Published var dailyNoteDateFormat: String {
-        didSet {
-            UserDefaults.standard.set(dailyNoteDateFormat, forKey: "dailyNoteDateFormat")
-            InternalAppTracker.shared.trackSettingChange(key: "dailyNoteDateFormat", value: dailyNoteDateFormat)
-        }
-    }
-    
-    @Published var dailyNoteFolder: String {
-        didSet {
-            UserDefaults.standard.set(dailyNoteFolder, forKey: "dailyNoteFolder")
-            InternalAppTracker.shared.trackSettingChange(key: "dailyNoteFolder", value: dailyNoteFolder)
-        }
-    }
-    
-    @Published var dailyNoteTemplate: String {
-        didSet {
-            UserDefaults.standard.set(dailyNoteTemplate, forKey: "dailyNoteTemplate")
-        }
-    }
-    
-    @Published var openDailyNoteOnStartup: Bool {
-        didSet {
-            UserDefaults.standard.set(openDailyNoteOnStartup, forKey: "openDailyNoteOnStartup")
-        }
-    }
-
-    // Agent settings
-    @Published var claudeAPIKey: String {
-        didSet {
-            // Store in UserDefaults for simplicity (in production, use Keychain)
-            UserDefaults.standard.set(claudeAPIKey, forKey: "claudeAPIKey")
-        }
-    }
-
-    @Published var agentEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(agentEnabled, forKey: "agentEnabled")
-        }
-    }
+    // MARK: - UI State
 
     @Published var showSettings: Bool = false
-    
+
+    // MARK: - Init
+
     private init() {
-        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 40.0
-        self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 85.0
+        // Window
+        self.windowWidthPercent = UserDefaults.standard.object(forKey: "windowWidthPercent") as? CGFloat ?? 20.0
+        self.windowHeightPercent = UserDefaults.standard.object(forKey: "windowHeightPercent") as? CGFloat ?? 50.0
+
+        // Appearance
+        self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? true
         self.globalFontSize = UserDefaults.standard.object(forKey: "globalFontSize") as? CGFloat ?? 13.0
-        self.isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? false
-        
-        // Default screenshots directory - expand tilde
-        let defaultDir = (NSHomeDirectory() + "/Pictures/Pics/Screenshots")
+
+        // Screenshots
+        let defaultDir = NSHomeDirectory() + "/Pictures/Screenshots"
         self.screenshotsDirectory = UserDefaults.standard.string(forKey: "screenshotsDirectory") ?? defaultDir
-        
-        // Default vault directory - home directory by default
-        self.vaultRootDirectory = UserDefaults.standard.string(forKey: "vaultRootDirectory") ?? NSHomeDirectory()
-        
-        self.activityLoggingEnabled = UserDefaults.standard.bool(forKey: "activityLoggingEnabled")
+
+        // Activity
+        self.activityLoggingEnabled = UserDefaults.standard.object(forKey: "activityLoggingEnabled") as? Bool ?? true
         self.activityLogRetentionDays = UserDefaults.standard.object(forKey: "activityLogRetentionDays") as? Int ?? 30
-        self.keyboardTrackingEnabled = UserDefaults.standard.bool(forKey: "keyboardTrackingEnabled")
-        self.mouseTrackingEnabled = UserDefaults.standard.bool(forKey: "mouseTrackingEnabled")
-        self.neuralContextEnabled = UserDefaults.standard.bool(forKey: "neuralContextEnabled") // Defaults to false
-        
-        // Daily notes settings
-        self.dailyNoteDateFormat = UserDefaults.standard.string(forKey: "dailyNoteDateFormat") ?? "MM-dd-yyyy"
-        self.dailyNoteFolder = UserDefaults.standard.string(forKey: "dailyNoteFolder") ?? "Journal/daily_notes"
-        self.dailyNoteTemplate = UserDefaults.standard.string(forKey: "dailyNoteTemplate") ?? """
-##### *[my list](my-list)*
----
-#### mantras
 
-
-#### journal
-
-
-#### lessons learned
-
-"""
-        self.openDailyNoteOnStartup = UserDefaults.standard.object(forKey: "openDailyNoteOnStartup") as? Bool ?? true
-
-        // Agent settings
-        self.claudeAPIKey = UserDefaults.standard.string(forKey: "claudeAPIKey") ?? ""
-        self.agentEnabled = UserDefaults.standard.object(forKey: "agentEnabled") as? Bool ?? true
+        // Drift Monitor
+        self.driftMonitorEnabled = UserDefaults.standard.object(forKey: "driftMonitorEnabled") as? Bool ?? true
+        self.driftThresholdSeconds = UserDefaults.standard.object(forKey: "driftThresholdSeconds") as? Int ?? 30
     }
-    
+
     func resetToDefaults() {
-        windowWidthPercent = 40.0
-        windowHeightPercent = 85.0
+        windowWidthPercent = 20.0
+        windowHeightPercent = 50.0
+        isDarkMode = true
         globalFontSize = 13.0
-        isDarkMode = false
-        screenshotsDirectory = NSHomeDirectory() + "/Pictures/Pics/Screenshots"
+        driftMonitorEnabled = true
+        driftThresholdSeconds = 30
     }
 }
+
+// MARK: - Settings View
 
 struct SettingsView: View {
     @ObservedObject var settings = AppSettings.shared
+    @ObservedObject var driftMonitor = DriftMonitor.shared
     @Environment(\.dismiss) var dismiss
-    @State private var selectedTab: SettingsTab = .general
-    
-    enum SettingsTab: String, CaseIterable {
-        case general = "General"
-        case agent = "Agent"
-        case calendar = "Calendar"
-        case activity = "Activity"
-        case screenshots = "Screenshots"
-        case vault = "Vault"
 
-        var icon: String {
-            switch self {
-            case .general: return "gearshape"
-            case .agent: return "brain"
-            case .calendar: return "calendar"
-            case .activity: return "chart.line.uptrend.xyaxis"
-            case .screenshots: return "camera.viewfinder"
-            case .vault: return "folder"
-            }
-        }
-    }
-    
     var body: some View {
-        HStack(spacing: 0) {
-            // Sidebar
-            VStack(spacing: 0) {
-                // Sidebar content
-                VStack(spacing: 8) {
-                    ForEach(SettingsTab.allCases, id: \.self) { tab in
-                        Button(action: {
-                            selectedTab = tab
-                        }) {
-                            HStack(spacing: 10) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 16))
-                                    .frame(width: 20)
-                                Text(tab.rawValue)
-                                    .font(.system(size: 13))
-                                Spacer()
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
-                            .background(selectedTab == tab ? Color.accentColor.opacity(0.15) : Color.clear)
-                            .cornerRadius(6)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                .padding(10)
-                
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Settings")
+                    .font(.system(size: 16, weight: .semibold))
+
                 Spacer()
-            }
-            .frame(width: 180)
-            .background(Color(NSColor.controlBackgroundColor))
-            
-            Divider()
-            
-            // Content area
-            VStack(spacing: 0) {
-                // Toolbar with close button
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Close (Esc)")
-                    .keyboardShortcut(.escape, modifiers: [])
+
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
                 }
-                .padding(12)
-                
-                // Content
-                ScrollView {
-                    contentView
-                        .padding(20)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .buttonStyle(.plain)
+                .keyboardShortcut(.escape, modifiers: [])
             }
+            .padding(16)
             .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            // Content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Focus Settings
+                    focusSection
+
+                    Divider()
+
+                    // Activity Settings
+                    activitySection
+
+                    Divider()
+
+                    // Appearance
+                    appearanceSection
+
+                    Divider()
+
+                    // About
+                    aboutSection
+                }
+                .padding(20)
+            }
         }
-        .frame(width: 650, height: 500)
+        .frame(width: 400, height: 500)
     }
-    
-    @ViewBuilder
-    var contentView: some View {
-        switch selectedTab {
-        case .general:
-            generalView
-        case .agent:
-            agentView
-        case .calendar:
-            calendarSettingsView
-        case .activity:
-            activityView
-        case .screenshots:
-            screenshotsView
-        case .vault:
-            vaultView
-        }
-    }
-    
-    var generalView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("General")
-                .font(.system(size: 20, weight: .bold))
-            
-            Form {
-                // Appearance
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Appearance")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    Toggle("Use dark mode", isOn: $settings.isDarkMode)
-                        .toggleStyle(SwitchToggleStyle())
-                    
-                    Text("Changes apply immediately")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-                
-                Divider()
-                
-                // Font Size
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Font Size")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    HStack {
-                        Text("Size:")
-                            .frame(width: 60, alignment: .leading)
-                        Slider(value: $settings.globalFontSize, in: 10...24, step: 1)
-                            .accentColor(Color.brutalistAccent)
-                        Text("\(Int(settings.globalFontSize))pt")
-                            .frame(width: 40, alignment: .trailing)
-                            .font(.system(size: 12, design: .monospaced))
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Image(systemName: "command")
-                            .font(.system(size: 10))
-                        Text("+/- to adjust")
-                            .font(.system(size: 10))
-                    }
-                    .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-                
-                Divider()
-                
-                // Window Size
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Window Size")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Width:")
-                                .frame(width: 60, alignment: .leading)
-                            LogSlider(
-                                value: $settings.windowWidthPercent,
-                                range: 35...100
-                            )
-                            Text("\(Int(settings.windowWidthPercent))%")
-                                .frame(width: 40, alignment: .trailing)
-                                .font(.system(size: 12, design: .monospaced))
-                        }
-                        
-                        HStack {
-                            Text("Height:")
-                                .frame(width: 60, alignment: .leading)
-                            LogSlider(
-                                value: $settings.windowHeightPercent,
-                                range: 50...96
-                            )
-                            Text("\(Int(settings.windowHeightPercent))%")
-                                .frame(width: 40, alignment: .trailing)
-                                .font(.system(size: 12, design: .monospaced))
-                        }
-                    }
-                    
-                    Text("Window will resize on next show")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-                
-                Divider()
-                
-                // Reset button
+
+    // MARK: - Sections
+
+    private var focusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("FOCUS")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+
+            Toggle("Drift Monitor", isOn: $settings.driftMonitorEnabled)
+                .toggleStyle(.switch)
+
+            Text("Gently reminds you to get back on task when you drift to distraction apps")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+
+            if settings.driftMonitorEnabled {
                 HStack {
-                    Button("Reset to Defaults") {
-                        settings.resetToDefaults()
+                    Text("Threshold:")
+                    Picker("", selection: $settings.driftThresholdSeconds) {
+                        Text("15 sec").tag(15)
+                        Text("30 sec").tag(30)
+                        Text("60 sec").tag(60)
+                        Text("120 sec").tag(120)
                     }
-                    .buttonStyle(BorderlessButtonStyle())
-                    
-                    Spacer()
+                    .pickerStyle(.menu)
+                    .frame(width: 100)
                 }
-                .padding(.vertical, 8)
-            }
-            .formStyle(.grouped)
-            
-            Spacer()
-        }
-    }
-
-    var agentView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Agent")
-                .font(.system(size: 20, weight: .bold))
-
-            Form {
-                // API Key Section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Claude API Key")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    SecureField("sk-ant-api03-...", text: $settings.claudeAPIKey)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(.system(size: 12, design: .monospaced))
-
-                    Text("Get your API key from console.anthropic.com")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    if !settings.claudeAPIKey.isEmpty {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.system(size: 12))
-                            Text("API key configured")
-                                .font(.system(size: 11))
-                                .foregroundColor(.green)
-                        }
-                    }
-                }
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Agent Settings
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Enable AI Agent", isOn: $settings.agentEnabled)
-                        .toggleStyle(SwitchToggleStyle())
-
-                    Text("When enabled, the Agent tab will be accessible")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Info Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("About the Agent")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        featureRow(icon: "person.2", text: "Manages your contacts with preferences")
-                        featureRow(icon: "brain", text: "Remembers facts and learns from interactions")
-                        featureRow(icon: "calendar", text: "Can schedule meetings and check availability")
-                        featureRow(icon: "magnifyingglass", text: "Searches your work context intelligently")
-                    }
-                }
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Privacy note
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "lock.shield")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-
-                    Text("Conversations and context are sent to Claude API for processing. Your data is not stored by Anthropic beyond the API call.")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-            }
-            .formStyle(.grouped)
-
-            Spacer()
-        }
-    }
-
-    private func featureRow(icon: String, text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundColor(Color.brutalistAccent)
-                .frame(width: 16)
-            Text(text)
-                .font(.system(size: 12))
-                .foregroundColor(Color.brutalistTextSecondary)
-        }
-    }
-
-    var calendarSettingsView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Calendar")
-                .font(.system(size: 20, weight: .bold))
-
-            Form {
-                // Permission Status
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Calendar Access")
-                        .font(.system(size: 13, weight: .semibold))
-
-                    HStack(spacing: 8) {
-                        if CalendarStore.shared.hasAccess {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.system(size: 16))
-                            Text("Calendar access granted")
-                                .font(.system(size: 13))
-                                .foregroundColor(.green)
-                        } else {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(.orange)
-                                .font(.system(size: 16))
-                            Text("Calendar access not granted")
-                                .font(.system(size: 13))
-                                .foregroundColor(.orange)
-                        }
-                    }
-
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            Task {
-                                await CalendarStore.shared.retryAccess()
-                            }
-                        }) {
-                            Text("Request Access")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-
-                        Button(action: {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }) {
-                            Text("Open System Settings")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                    }
-
-                    Text("If Sol Unified doesn't appear in System Settings, click 'Request Access' first.")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Available Calendars
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Available Calendars")
-                            .font(.system(size: 13, weight: .semibold))
-
-                        Spacer()
-
-                        Button(action: {
-                            Task {
-                                await CalendarStore.shared.refreshTodayEvents()
-                            }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 12))
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                        .help("Refresh calendars")
-                    }
-
-                    if CalendarStore.shared.hasAccess {
-                        CalendarListView()
-                    } else {
-                        Text("Grant calendar access to see available calendars")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .italic()
-                    }
-                }
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Privacy note
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "lock.shield")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-
-                    Text("Sol Unified reads your calendar events locally. No calendar data is sent to any server.")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
             }
-            .formStyle(.grouped)
-
-            Spacer()
         }
     }
 
-    var activityView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Activity")
-                .font(.system(size: 20, weight: .bold))
-            
-            Form {
-                // Activity Logging Toggle
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Enable activity logging", isOn: $settings.activityLoggingEnabled)
-                        .toggleStyle(SwitchToggleStyle())
-                    
-                    Text("Track app usage, window titles, and system events")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-                
-                if settings.activityLoggingEnabled {
-                    Divider()
+    private var activitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("BACKGROUND SERVICES")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
 
-                    // Neural Context (Screen Capture)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Enable Neural Context", isOn: $settings.neuralContextEnabled)
-                            .toggleStyle(SwitchToggleStyle())
+            Toggle("Activity Monitoring", isOn: $settings.activityLoggingEnabled)
+                .toggleStyle(.switch)
 
-                        Text("Captures screenshots periodically to understand what you're actually doing (e.g., 'reading docs' vs 'watching YouTube' in Chrome). Requires Screen Recording permission.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+            Text("Tracks app usage for context and drift detection")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
 
-                        if settings.neuralContextEnabled {
-                            HStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.system(size: 11))
-                                Text("Screen Recording permission required")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 8)
-
-                    Divider()
-
-                    // Privacy note
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "lock.shield")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-
-                        Text("All data is stored locally on your device and is never sent to the cloud.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 8)
-
-                    Divider()
-
-                    // Test button
-                    HStack {
-                        Button("Test Event") {
-                            ActivityStore.shared.testEvent()
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                        
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                }
-            }
-            .formStyle(.grouped)
-            
-            Spacer()
-        }
-    }
-    
-    var vaultView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Vault")
-                .font(.system(size: 20, weight: .bold))
-            
-            Form {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Vault Root Folder")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    HStack(spacing: 8) {
-                        Text(settings.vaultRootDirectory)
-                            .font(.system(size: 11, design: .monospaced))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(6)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(4)
-                        
-                        Button("Choose...") {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            panel.canCreateDirectories = true
-                            
-                            if panel.runModal() == .OK {
-                                if let url = panel.url {
-                                    settings.vaultRootDirectory = url.path
-                                }
-                            }
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                    }
-                    
-                    Text("Select the root folder for your vault notes")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-                
-                Divider()
-                
-                // Daily Notes Section
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Daily Notes")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    // Date Format
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Date Format")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        
-                        TextField("MM-dd-yyyy", text: $settings.dailyNoteDateFormat)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 11, design: .monospaced))
-                        
-                        Text("Preview: \(DailyNoteManager.shared.formatDate(Date(), format: settings.dailyNoteDateFormat))")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Daily Notes Folder
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Daily Notes Folder")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        
-                        TextField("Journal/daily_notes", text: $settings.dailyNoteFolder)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 11, design: .monospaced))
-                        
-                        Text("Relative to vault root")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Template
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Template")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        
-                        TextEditor(text: $settings.dailyNoteTemplate)
-                            .font(.system(size: 11, design: .monospaced))
-                            .frame(height: 100)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-                    
-                    // Open on Startup
-                    Toggle("Open today's note on startup", isOn: $settings.openDailyNoteOnStartup)
-                        .toggleStyle(SwitchToggleStyle())
-                    
-                    // Quick access hint
-                    HStack(spacing: 4) {
-                        Image(systemName: "command")
-                            .font(.system(size: 10))
-                        Text("T")
-                            .font(.system(size: 10, weight: .semibold))
-                        Text("to open today's note")
-                            .font(.system(size: 10))
-                    }
+            // Screenshots directory
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Screenshots folder:")
+                    .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                    .padding(.top, 4)
-                }
-                .padding(.vertical, 8)
-            }
-            .formStyle(.grouped)
-            
-            Spacer()
-        }
-    }
 
-    var screenshotsView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Screenshots")
-                .font(.system(size: 20, weight: .bold))
-            
-            Form {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Screenshot Folder")
-                        .font(.system(size: 13, weight: .semibold))
-                    
-                    HStack(spacing: 8) {
-                        Text(settings.screenshotsDirectory)
-                            .font(.system(size: 11, design: .monospaced))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(6)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(4)
-                        
-                        Button("Choose...") {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            panel.canCreateDirectories = true
-                            
-                            if panel.runModal() == .OK {
-                                if let url = panel.url {
-                                    settings.screenshotsDirectory = url.path
-                                }
-                            }
+                HStack {
+                    Text(settings.screenshotsDirectory)
+                        .font(.system(size: 10, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(6)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(4)
+
+                    Button("Change") {
+                        let panel = NSOpenPanel()
+                        panel.canChooseFiles = false
+                        panel.canChooseDirectories = true
+                        panel.allowsMultipleSelection = false
+                        if panel.runModal() == .OK, let url = panel.url {
+                            settings.screenshotsDirectory = url.path
                         }
-                        .buttonStyle(BorderlessButtonStyle())
                     }
-                    
-                    Text("Select the folder where your screenshots are stored")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-            }
-            .formStyle(.grouped)
-            
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Logarithmic Slider
-struct LogSlider: View {
-    @Binding var value: CGFloat
-    let range: ClosedRange<CGFloat>
-
-    private var logValue: CGFloat {
-        let minLog = log(range.lowerBound)
-        let maxLog = log(range.upperBound)
-        return (log(value) - minLog) / (maxLog - minLog)
-    }
-
-    var body: some View {
-        Slider(
-            value: Binding(
-                get: { logValue },
-                set: { newLogValue in
-                    let minLog = log(range.lowerBound)
-                    let maxLog = log(range.upperBound)
-                    let actualValue = exp(minLog + newLogValue * (maxLog - minLog))
-                    value = actualValue
-                }
-            ),
-            in: 0...1
-        )
-        .accentColor(Color.brutalistAccent)
-    }
-}
-
-// MARK: - Calendar List View
-struct CalendarListView: View {
-    @State private var calendars: [EKCalendar] = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if calendars.isEmpty {
-                Text("No calendars found")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .italic()
-            } else {
-                ForEach(calendars, id: \.calendarIdentifier) { calendar in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color(cgColor: calendar.cgColor))
-                            .frame(width: 10, height: 10)
-
-                        Text(calendar.title)
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.brutalistTextPrimary)
-
-                        Spacer()
-
-                        Text(calendar.source?.title ?? "Local")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(3)
-                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
                 }
             }
         }
-        .onAppear {
-            loadCalendars()
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("APPEARANCE")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+
+            Toggle("Dark Mode", isOn: $settings.isDarkMode)
+                .toggleStyle(.switch)
         }
     }
 
-    private func loadCalendars() {
-        let eventStore = EKEventStore()
-        eventStore.refreshSourcesIfNecessary()
-        calendars = eventStore.calendars(for: .event).sorted { $0.title < $1.title }
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ABOUT")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+
+            Text("Sol Unified v2.0")
+                .font(.system(size: 13, weight: .medium))
+
+            Text("\"The Prosthetic for Executive Function\"")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .italic()
+
+            VStack(alignment: .leading, spacing: 4) {
+                hotkeyInfo(key: "Opt + P", desc: "Set Objective")
+                hotkeyInfo(key: "Opt + C", desc: "Capture Context")
+            }
+            .padding(.top, 8)
+
+            Button("Reset to Defaults") {
+                settings.resetToDefaults()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11))
+            .foregroundColor(.blue)
+            .padding(.top, 8)
+        }
+    }
+
+    private func hotkeyInfo(key: String, desc: String) -> some View {
+        HStack {
+            Text(key)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(3)
+
+            Text(desc)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
     }
 }
 
-
+#Preview {
+    SettingsView()
+}
